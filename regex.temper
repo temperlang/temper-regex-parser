@@ -1,0 +1,193 @@
+
+let { ... } = import("std/regex");
+
+class Parser {
+  public chars: List<String>;
+  public pos: Int;
+  public errors: ListBuilder<String>;
+
+  public constructor(src: String) {
+    chars = src.split("");
+    pos = 0;
+    errors = new ListBuilder<String>();
+  }
+
+  public error(e: String): Void {
+    errors.add("${e}");
+  }
+
+  public isDone(): Boolean {
+    return chars.length <= pos;
+  }
+
+  public peek(): String {
+    if (isDone()) {
+      error("done");
+      return "";
+    }
+    return chars[pos];
+  }
+
+  public advance(): Void {
+    pos += 1;
+  }
+
+  public read(): String {
+    let ret = peek();
+    advance();
+    return ret;
+  }
+
+  public matchChar(s: String): Boolean {
+    if (isDone()) {
+      return false;
+    }
+    let ret = peek();
+    if (ret == s) {
+      advance();
+      return true;
+    } else {
+      return false;
+    }
+  }
+
+  public charClassBody(): Regex {
+    let invert = matchChar("^");
+    let opts = new ListBuilder<CodePart>();
+    while (!matchChar("]")) {
+      let firstChar = read();
+      if (matchChar("-")) {
+        let secondChar = read();
+        opts.add(new CodeRange(firstChar.codePoints.read(), secondChar.codePoints.read()));
+      } else {
+        opts.add(new CodePoints(firstChar));
+      }
+    }
+    return new CodeSet(opts.toList(), invert);
+  }
+
+  public readPostfix(exist: Regex): Regex {
+    if (matchChar("+")) {
+      return new Repeat(exist, 1, null, matchChar("?"));
+    } else if (matchChar("*")) {
+      return new Repeat(exist, 0, null, matchChar("?"));
+    } else if (matchChar("?")) {
+      return new Repeat(exist, 0, 1, matchChar("?"));
+    } else {
+      return exist;
+    }
+  }
+
+  public readSingle(): Regex | Null {
+    if (matchChar("[")) {
+      return charClassBody();
+    } 
+    if (matchChar("(")) {
+      if (matchChar("?")) {
+        // non capturing group
+        if (matchChar(":")) {
+          let regex = readOr();
+          if (!matchChar(")")) {
+            error("closing paren");
+            return null;
+          }
+          return regex;
+        } else {
+          let str = new ListBuilder<String>();
+          while (matchChar(" ")) {}
+          while (!matchChar("=")) {
+            str.add(read());
+            while (matchChar(" ")) {}
+          }
+          let regex = readOr();
+          if (!matchChar(")")) {
+            error("closing paren");
+            return null;
+          }
+          let name = str.join("", fn(s: String): String{s});
+          match (regex) {
+            is Regex -> return new Capture(name, regex);
+            else -> return null;
+          }
+        }
+      } else {
+        let regex = readOr();
+        if (!matchChar(")")) {
+          error("closing paren");
+          return null;
+        }
+        return regex;
+      }
+    } else if (matchChar("^")) {
+      return Begin;
+    } else if (matchChar("$")) {
+      return End;
+    } else if (matchChar(".")) {
+      return Dot;
+    } else if (matchChar("\\")) {
+      if (matchChar("b")) {
+        return WordBoundary;
+      } else if (matchChar("d")) {
+        return Digit;
+      } else if (matchChar("w")) {
+        return Word;
+      } else if (matchChar("s")) {
+        return Space;
+      } else {
+        error("backslash");
+        return null;
+      }
+    } else {
+      return new CodeSet([new CodePoints(read()).as<CodePart>()]);
+    }
+  }
+
+  public readSeq(): Regex | Null {
+    let seq = new ListBuilder<Regex>();
+    while (!isDone() && peek() != "|" && peek() != ")") {
+      let regex = readSingle();
+      match (regex) {
+        is Regex -> seq.add(readPostfix(regex));
+        else -> return null;
+      }
+    }
+    return new Sequence(seq.toList());
+  }
+
+  public readOr(): Regex | Null {
+    let ors = new ListBuilder<Regex>();
+    while (!isDone() && peek() != ")") {
+      if (ors.length != 0 && !matchChar("|")) {
+        console.log(pos.toString());
+        error("or");
+        return null;
+      }
+      let regex = readSeq();
+      match (regex) {
+        is Regex -> ors.add(regex);
+        else -> return null;
+      }
+    }
+    return new Or(ors.toList());
+  }
+}
+
+let newRegex(src: String): CompiledRegex | Null {
+  let parser = new Parser(src);
+  let regex = parser.readOr();
+  match (regex) {
+    is Regex -> return regex.compiled();
+    else -> return null;
+  }
+}
+
+let main(): Void {
+  let regex = newRegex("1(?num=\\d+)3");
+
+  match (regex) {
+    is CompiledRegex -> console.log(regex.find("123")["num"].value);
+    else -> console.log("err!");
+  }
+}
+
+main();
