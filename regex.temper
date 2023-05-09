@@ -1,15 +1,38 @@
 
 let { ... } = import("std/regex");
 
+interface SlotMeta {}
+
+class Slot extends SlotMeta {
+  public name: String;
+  public regex: Regex;
+}
+
+let stringToRegex(text: String): Regex {
+  return new Sequence(text.split("").map(fn(s: String): Regex {
+    return new CodePoints(s);
+  }));
+}
+
 class Parser {
   public chars: List<String>;
   public pos: Int;
+  public slots: ListBuilder<Slot>;
   public errors: ListBuilder<String>;
 
-  public constructor(src: String) {
-    chars = src.split("");
+  public constructor(str: String) {
+    chars = str.split("");
     pos = 0;
+    slots = new ListBuilder<Slot>();
     errors = new ListBuilder<String>();
+  }
+
+  public addString(name: String, text: String): Void {
+    slots.add(new Slot(name, stringToRegex(text)));
+  }
+
+  public addRegex(name: String, regex: Regex): Void {
+    slots.add(new Slot(name, regex));
   }
 
   public error(e: String): Void {
@@ -39,11 +62,7 @@ class Parser {
   }
 
   public matchChar(s: String): Boolean {
-    if (isDone()) {
-      return false;
-    }
-    let ret = peek();
-    if (ret == s) {
+    if (peek() == s) {
       advance();
       return true;
     } else {
@@ -133,12 +152,30 @@ class Parser {
         return Word;
       } else if (matchChar("s")) {
         return Space;
+      } else if (matchChar("(")) {
+        let parts = new ListBuilder<String>();
+        while (!matchChar(")")) {
+          if (isDone()) {
+            error("missing closing paren in \\(...)");
+            return null;
+          }
+          parts.add(read());
+        }
+        let str = parts.join("", fn(s: String): String{s});
+        for (var i = 0; i < slots.length; i++) {
+          let slot = slots[i];
+          if (slot.name == str) {
+            return slot.regex;
+          }
+        }
+        error("no such slot: ${str}");
+        return null;
       } else {
-        error("backslash");
+        error("unknown escape code: \\${peek()}");
         return null;
       }
     } else {
-      return new CodeSet([new CodePoints(read()).as<CodePart>()]);
+      return new CodePoints(read());
     }
   }
 
@@ -174,6 +211,7 @@ class Parser {
 
 let newRegex(src: String): CompiledRegex | Null {
   let parser = new Parser(src);
+  parser.addString("LastName", "Summa");
   let regex = parser.readOr();
   match (regex) {
     is Regex -> return regex.compiled();
@@ -182,10 +220,10 @@ let newRegex(src: String): CompiledRegex | Null {
 }
 
 let main(): Void {
-  let regex = newRegex("1(?num=\\d+)3");
+  let regex = newRegex("\\w+ \\(LastName)");
 
   match (regex) {
-    is CompiledRegex -> console.log(regex.find("123")["num"].value);
+    is CompiledRegex -> console.log(regex.find("Shaw Summa")["full"].value);
     else -> console.log("err!");
   }
 }
