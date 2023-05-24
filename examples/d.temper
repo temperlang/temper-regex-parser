@@ -1,0 +1,62 @@
+let { CompiledRegex } = import("std/regex");
+let { compile, compileWith, sub, subWith } = import("../regex.temper");
+
+let checkRegex(re: CompiledRegex): Void {
+  console.log(re.find("all")["full"].value);
+  console.log(re.find("beautify")["full"].value);
+  console.log(re.find("can")["full"].value);
+  console.log(re.find("demonstrate")["full"].value);
+  console.log(re.find("regex")["full"].value);
+  console.log(re.find("functions")["full"].value);
+}
+
+let check(re: CompiledRegex | Null): Void {
+  match (re) {
+    is CompiledRegex -> checkRegex(re);
+    else -> console.log("null regex");
+  }
+}
+
+let main(): Void {
+  let regex1 = compile("[abcdef]");
+  let regex2 = compile("a|b|c|d|e|f");
+  let regex3 = compile("[a-f]");
+  let regex4 = compileWith(
+    "\\(a-through-f)",
+    [
+      "a-through-f",
+    ],
+    [
+      subWith(
+        "\\(char-a)|\\(char-b)|\\(char-c)|\\(char-d)|\\(char-e)|\\(char-f)",
+        [
+          "char-a",
+          "char-b",
+          "char-c",
+          "char-d",
+          "char-e",
+          "char-f",
+        ],
+        [
+          sub("a"),
+          subWith(
+            "\\(char-b)",
+            [ "char-b" ],
+            [ sub("b") ]
+          ),
+          sub("(?cee=c)"),
+          sub("(d)"),
+          sub("(e|e)"),
+          sub("[f-f]"),
+        ]
+      ),
+    ]
+  );
+
+  check(regex1);
+  check(regex2);
+  check(regex3);
+  check(regex4);
+}
+
+main();
