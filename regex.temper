@@ -1,9 +1,7 @@
 
 let { ... } = import("std/regex");
 
-interface SlotMeta {}
-
-class Slot extends SlotMeta {
+class Slot {
   public name: String;
   public regex: Regex;
 }
@@ -209,23 +207,42 @@ class Parser {
   }
 }
 
-let newRegex(src: String): CompiledRegex | Null {
+export let compileWith(src: String, keys: List<String>, values: List<Regex | Null>): CompiledRegex | Null {
   let parser = new Parser(src);
-  parser.addString("LastName", "Summa");
+  for (var i = 0; i < keys.length && i < values.length; i++) {
+    let val = values[i];
+    match (val) {
+      is Regex -> parser.addRegex(keys[i], val);
+    }
+  }
   let regex = parser.readOr();
   match (regex) {
-    is Regex -> return regex.compiled();
-    else -> return null;
+    is Regex -> new Capture("full", regex).compiled();
+    else -> null;
   }
 }
 
-let main(): Void {
-  let regex = newRegex("\\w+ \\(LastName)");
-
+export let compile(src: String): CompiledRegex | Null {
+  let parser = new Parser(src);
+  let regex = parser.readOr();
   match (regex) {
-    is CompiledRegex -> console.log(regex.find("Shaw Summa")["full"].value);
-    else -> console.log("err!");
+    is Regex -> new Capture("full", regex).compiled();
+    else -> null;
   }
 }
 
-main();
+export let subWith(src: String, keys: List<String>, values: List<Regex | Null>): Regex | Null {
+  let parser = new Parser(src);
+  for (var i = 0; i < keys.length && i < values.length; i++) {
+    let val = values[i];
+    match (val) {
+      is Regex -> parser.addRegex(keys[i], val);
+    }
+  }
+  parser.readOr();
+}
+
+export let sub(src: String): Regex | Null {
+  let parser = new Parser(src);
+  parser.readOr();
+}

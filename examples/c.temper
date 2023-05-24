@@ -1,0 +1,13 @@
+let { CompiledRegex } = import("std/regex");
+let { compile } = import("../regex.temper");
+
+let main(): Void {
+  let regex = compile("\\b[a-zA-Z_][a-zA-Z0-9_]*\\b");
+
+  match (regex) {
+    is CompiledRegex -> console.log(regex.find("123_abc c_symbol1 c_symbol2")["full"].value);
+    else -> console.log("err!");
+  }
+}
+
+main();
