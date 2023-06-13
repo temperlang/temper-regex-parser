@@ -1,10 +1,11 @@
-let { test, assert, TestFixtureBase } = import("std/testing");
 let { CompiledRegex } = import("std/regex");
+let { test, assert, TestFixtureBase } = import("std/testing");
 let { compile } = import("../regex.temper");
 
 export class SimpleCaptureTest {
-  @test public let main(): Void {
+  @test public testCapture(): Void {
     let regex = compile("(?cent=\\d)(?tens=\\d)(?ones=\\d)");
+
     let tens = match (regex) {
       is CompiledRegex -> regex.find("123")["tens"].value;
       else -> "fail";
