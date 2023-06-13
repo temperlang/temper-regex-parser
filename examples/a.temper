@@ -9,7 +9,7 @@ export class SimpleCaptureTest {
     let tens = match (regex) {
       is CompiledRegex -> regex.find("123")["tens"].value;
       else -> "fail";
-    }
+    };
     assert(tens == "2") { "Expected 2, not: ${tens}" }
   }
 }
