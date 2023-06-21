@@ -1,0 +1,72 @@
+let { CompiledRegex } = import("std/regex");
+let { test, assert, TestFixtureBase } = import("std/testing");
+let { compile, compileWith, sub, subWith } = import("../regex.temper");
+
+let checkValue(value: String, expected: String): Void {
+  assert(value == expected) { "Expected ${expected}, not ${value}" }
+}
+
+let checkRegex(re: CompiledRegex): Void {
+  checkValue(re.find("all")["full"].value, expected = "a");
+  checkValue(re.find("beautify")["full"].value, expected = "b");
+  checkValue(re.find("can")["full"].value, expected = "c");
+  checkValue(re.find("demonstrate")["full"].value, expected = "d");
+  checkValue(re.find("regex")["full"].value, expected = "e");
+  checkValue(re.find("functions")["full"].value, expected = "f");
+}
+
+let check(re: CompiledRegex | Null): Void {
+  match (re) {
+    is CompiledRegex -> checkRegex(re);
+    else -> assert(false) { "Failed to compile" };
+  }
+}
+
+export class VariationsTest {
+  @test public testCodeSet(): Void {
+    check(compile("[abcdef]"));
+  }
+
+  @test public testOr(): Void {
+    check(compile("a|b|c|d|e|f"));
+  }
+
+  @test public testCodeRange(): Void {
+    check(compile("[a-f]"));
+  }
+
+  @test public testSub(): Void {
+    let regex = compileWith(
+      "\\(a-through-f)",
+      [
+        "a-through-f",
+      ],
+      [
+        subWith(
+          "\\(char-a)|\\(char-b)|\\(char-c)|\\(char-d)|\\(char-e)|\\(char-f)",
+          [
+            "char-a",
+            "char-b",
+            "char-c",
+            "char-d",
+            "char-e",
+            "char-f",
+          ],
+          [
+            sub("a"),
+            subWith(
+              "\\(char-b)",
+              [ "char-b" ],
+              [ sub("b") ]
+            ),
+            sub("(?cee=c)"),
+            sub("(d)"),
+            sub("(e|e)"),
+            sub("[f-f]"),
+          ]
+        ),
+      ]
+    );
+    check(regex);
+  }
+}
