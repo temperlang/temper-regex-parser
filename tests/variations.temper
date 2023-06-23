@@ -6,7 +6,7 @@ let checkValue(value: String, expected: String): Void {
   assert(value == expected) { "Expected ${expected}, not ${value}" }
 }
 
-let checkRegex(re: CompiledRegex): Void {
+let check(re: CompiledRegex): Void {
   checkValue(re.find("all")["full"].value, expected = "a");
   checkValue(re.find("beautify")["full"].value, expected = "b");
   checkValue(re.find("can")["full"].value, expected = "c");
@@ -15,27 +15,20 @@ let checkRegex(re: CompiledRegex): Void {
   checkValue(re.find("functions")["full"].value, expected = "f");
 }
 
-let check(re: CompiledRegex | Null): Void {
-  match (re) {
-    is CompiledRegex -> checkRegex(re);
-    else -> assert(false) { "Failed to compile" };
-  }
-}
-
 export class VariationsTest {
-  @test public testCodeSet(): Void {
+  @test public testCodeSet(): Void | NoResult {
     check(compile("[abcdef]"));
   }
 
-  @test public testOr(): Void {
+  @test public testOr(): Void | NoResult {
     check(compile("a|b|c|d|e|f"));
   }
 
-  @test public testCodeRange(): Void {
+  @test public testCodeRange(): Void | NoResult {
     check(compile("[a-f]"));
   }
 
-  @test public testSub(): Void {
+  @test public testSub(): Void | NoResult {
     let regex = compileWith(
       "\\(a-through-f)",
       [
