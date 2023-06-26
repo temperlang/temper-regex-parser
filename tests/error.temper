@@ -6,11 +6,13 @@ export class ErrorTest {
   @test public ok(): Void {
     // Verify that the infrastructure works.
     // Usually, we'll be checking for errors in this file.
-    assert(hasResult { compile("ok") }) { "expected result" }
+    // TODO Remove explicit `void` result if we can adjust java codegen.
+    assert(hasResult { compile("ok"); void }) { "expected result" }
   }
 
   @test public unclosedCapture(): Void {
-    assertNoResult { compile("(unclosed") }
+    // TODO Remove explicit `void` result if we can adjust java codegen.
+    assertNoResult { compile("(unclosed"); void }
   }
 
   // TODO Causes infinite allocation loop. Fix in future PR.
