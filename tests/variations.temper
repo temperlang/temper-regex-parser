@@ -30,13 +30,13 @@ export class VariationsTest {
 
   @test public testSub(): Void | NoResult {
     let regex = compileWith(
-      "\\(a-through-f)",
+      "(?$a-through-f)",
       [
         "a-through-f",
       ],
       [
         subWith(
-          "\\(char-a)|\\(char-b)|\\(char-c)|\\(char-d)|\\(char-e)|\\(char-f)",
+          "(?$char-a)|(?$char-b)|(?$char-c)|(?$char-d)|(?$char-e)|(?$char-f)",
           [
             "char-a",
             "char-b",
@@ -49,7 +49,7 @@ export class VariationsTest {
             // Make one explicit simple string just for demo.
             new CodePoints("a"),
             subWith(
-              "\\(char-b)",
+              "(?$char-b)",
               [ "char-b" ],
               [ sub("b") ]
             ),

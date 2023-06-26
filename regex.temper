@@ -62,10 +62,13 @@ class Parser {
     }
   }
 
-  public charClassBody(): Regex {
+  public charClassBody(): Regex | NoResult {
     let invert = matchChar("^");
     let opts = new ListBuilder<CodePart>();
     while (!matchChar("]")) {
+      if (isDone()) {
+        fail()
+      }
       let firstChar = read();
       if (matchChar("-")) {
         let secondChar = read();
@@ -103,10 +106,49 @@ class Parser {
             fail();
           }
           regex
+        } else if (matchChar("$")) {
+          let parts = new ListBuilder<String>();
+          while (!matchChar(")")) {
+            if (isDone()) {
+              error("missing closing paren in (?$...)");
+              fail();
+            }
+            parts.add(read());
+          }
+          let str = parts.join("", fn(s: String): String{s});
+          for (var i = 0; i < slots.length; i++) {
+            let slot = slots[i];
+            if (slot.name == str) {
+              return slot.regex;
+            }
+          }
+          error("no such slot: ${str}");
+          fail()
+        } else if (matchChar("=")) {
+          error("postivie lookhead is not supported");
+          fail();
+        } else if (matchChar("<")) {
+          if (matchChar("=")) {
+            error("postivie lookbehind is not supported");
+            fail();
+          } else if (matchChar("!")) {
+            error("negative lookbehind is not supported");
+            fail();
+          } else {
+            error("unknown sequence (<${peek()}");
+            fail();
+          }
+        } else if (matchChar("!")) {
+          error("negative lookahead is not supported");
+          fail();
         } else {
           let str = new ListBuilder<String>();
           while (matchChar(" ")) {}
           while (!matchChar("=")) {
+            if (isDone()) {
+              error("missing = in (?${str.join("", fn(s: String): String{s})}=...)");
+              return fail()
+            }
             str.add(read());
             while (matchChar(" ")) {}
           }
@@ -133,32 +175,22 @@ class Parser {
     } else if (matchChar(".")) {
       Dot
     } else if (matchChar("\\")) {
+      var escapeCode = peek();
       if (matchChar("b")) {
-        WordBoundary;
+        WordBoundary
       } else if (matchChar("d")) {
         Digit
       } else if (matchChar("w")) {
         Word
       } else if (matchChar("s")) {
         Space
-      } else if (matchChar("(")) {
-        let parts = new ListBuilder<String>();
-        while (!matchChar(")")) {
-          if (isDone()) {
-            error("missing closing paren in \\(...)");
-            fail();
-          }
-          parts.add(read());
-        }
-        let str = parts.join("", fn(s: String): String{s});
-        for (var i = 0; i < slots.length; i++) {
-          let slot = slots[i];
-          if (slot.name == str) {
-            return slot.regex;
-          }
-        }
-        error("no such slot: ${str}");
-        fail()
+      } else if (
+        matchChar("(") || matchChar(")")
+        || matchChar("[") || matchChar("]")
+        || matchChar("{") || matchChar("}")
+        || matchChar(".") || matchChar("\\")
+      ) {
+        new CodePoints(escapeCode);
       } else {
         error("unknown escape code: \\${peek()}");
         fail()

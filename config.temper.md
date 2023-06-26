@@ -6,3 +6,4 @@
     import("./tests/id.temper");
     import("./tests/sub.temper");
     import("./tests/variations.temper");
+    import("./tests/escape.temper");

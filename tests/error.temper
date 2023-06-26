@@ -15,10 +15,15 @@ export class ErrorTest {
     assertNoResult { compile("(unclosed"); void }
   }
 
-  // TODO Causes infinite allocation loop. Fix in future PR.
-  // @test public unclosedCodeSet(): Void {
-  //   assertNoResult { compile("[unclosed") }
-  // }
+  @test public unclosedCodePointGroup(): Void {
+    assertNoResult { compile("[group-unclosed") }
+  }
+
+  @test public unclosedNamedCaptureName(): Void {
+    assertNoResult { compile("(?name") }
+    assertNoResult { compile("(?name=") }
+    assertNoResult { compile("(?") }
+  }
 }
 
 let assertNoResult(action: fn(): Void | NoResult): Void {
