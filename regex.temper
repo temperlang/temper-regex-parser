@@ -6,12 +6,6 @@ class Slot {
   public regex: Regex;
 }
 
-let stringToRegex(text: String): Regex {
-  return new Sequence(text.split("").map(fn(s: String): Regex {
-    return new CodePoints(s);
-  }));
-}
-
 class Parser {
   public chars: List<String>;
   public pos: Int;
@@ -26,7 +20,7 @@ class Parser {
   }
 
   public addString(name: String, text: String): Void {
-    slots.add(new Slot(name, stringToRegex(text)));
+    slots.add(new Slot(name, new CodePoints(text)));
   }
 
   public addRegex(name: String, regex: Regex): Void {
@@ -161,13 +155,10 @@ class Parser {
           let regex = readOr();
           if (!matchChar(")")) {
             error("closing paren");
-            fail()
+            fail();
           }
           let name = str.join("", fn(s: String): String{s});
-          match (regex) {
-            is Regex -> new Capture(name, regex);
-            else -> fail();
-          }
+          new Capture(name, regex)
         }
       } else {
         let regex = readOr();
@@ -175,7 +166,7 @@ class Parser {
           error("closing paren");
           fail();
         }
-        regex;
+        regex
       }
     } else if (matchChar("^")) {
       Begin
@@ -233,15 +224,8 @@ class Parser {
   }
 }
 
-export let compileWith(src: String, keys: List<String>, values: List<Regex | Null>): CompiledRegex | NoResult {
-  let parser = new Parser(src);
-  for (var i = 0; i < keys.length && i < values.length; i++) {
-    let val = values[i];
-    match (val) {
-      is Regex -> parser.addRegex(keys[i], val);
-    }
-  }
-  let regex = parser.readOr();
+export let compileWith(src: String, keys: List<String>, values: List<Regex>): CompiledRegex | NoResult {
+  let regex = subWith(src, keys, values);
   new Capture("full", regex).compiled()
 }
 
@@ -251,13 +235,11 @@ export let compile(src: String): CompiledRegex | NoResult {
   new Capture("full", regex).compiled()
 }
 
-export let subWith(src: String, keys: List<String>, values: List<Regex | Null>): Regex | NoResult {
+export let subWith(src: String, keys: List<String>, values: List<Regex>): Regex | NoResult {
   let parser = new Parser(src);
   for (var i = 0; i < keys.length && i < values.length; i++) {
     let val = values[i];
-    match (val) {
-      is Regex -> parser.addRegex(keys[i], val);
-    }
+    parser.addRegex(keys[i], val);
   }
   parser.readOr()
 }
