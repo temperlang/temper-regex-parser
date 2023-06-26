@@ -14,16 +14,12 @@ let run(regex: CompiledRegex): Void {
 }
 
 export class SubTest {
-  @test public testSub(): Void {
+  @test public testSub(): Void | NoResult {
     let regex = compileWith(
       "(?first=\\(Word)) (?last=\\(Word))",
       [ "Word" ],
       [ sub("\\b\\w+\\b") ],
     );
-
-    match (regex) {
-      is CompiledRegex -> run(regex);
-      else -> assert(false) { "Failed to compile" }
-    }
+    run(regex);
   }
 }
