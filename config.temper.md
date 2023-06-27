@@ -1,9 +1,16 @@
 
     export let name = "temper-regex-parser";
     import("./regex.temper");
-    import("./tests/capture.temper");
-    import("./tests/error.temper");
-    import("./tests/id.temper");
-    import("./tests/sub.temper");
-    import("./tests/variations.temper");
-    import("./tests/escape.temper");
+    import("./runtime.temper");
+    import("./tests/parser/capture.temper");
+    import("./tests/parser/error.temper");
+    import("./tests/parser/id.temper");
+    import("./tests/parser/sub.temper");
+    import("./tests/parser/variations.temper");
+    import("./tests/parser/escape.temper");
+    import("./tests/runtime/capture.temper");
+    import("./tests/runtime/error.temper");
+    import("./tests/runtime/id.temper");
+    import("./tests/runtime/sub.temper");
+    import("./tests/runtime/variations.temper");
+    import("./tests/runtime/escape.temper");

@@ -1,0 +1,139 @@
+
+
+0
+1
+2
+  1) test Capture
+  ✔ ok
+  ✔ unclosed Capture
+  ✔ unclosed Code Point Group
+  ✔ unclosed Named Capture Name
+4
+5
+  2) test Escaped Dot
+12
+13
+14
+16
+17
+18
+19
+90
+91
+91
+92
+93
+96
+97
+98
+100
+101
+102
+103
+  3) test Escaped Parens
+16
+17
+  4) test Escaped Square Brace
+40
+  5) test Escpaed Curly Braces
+  6) test Escaped Backslash
+  7) test Id
+  8) test Sub
+0
+found at: 0 (in: all)
+0
+found at: 0 (in: beautify)
+0
+found at: 0 (in: can)
+0
+found at: 0 (in: demonstrate)
+1
+found at: 1 (in: regex)
+0
+found at: 0 (in: functions)
+  ✔ test Code Set
+0
+found at: 0 (in: all)
+0
+found at: 0 (in: beautify)
+0
+found at: 0 (in: can)
+0
+found at: 0 (in: demonstrate)
+1
+found at: 1 (in: regex)
+0
+found at: 0 (in: functions)
+  ✔ test Or
+0
+found at: 0 (in: all)
+0
+found at: 0 (in: beautify)
+0
+found at: 0 (in: can)
+0
+found at: 0 (in: demonstrate)
+1
+found at: 1 (in: regex)
+0
+found at: 0 (in: functions)
+  ✔ test Code Range
+0
+found at: 0 (in: all)
+0
+found at: 0 (in: beautify)
+0
+found at: 0 (in: can)
+0
+found at: 0 (in: demonstrate)
+1
+found at: 1 (in: regex)
+0
+found at: 0 (in: functions)
+  ✔ test Sub
+
+  8 passing (29ms)
+  8 failing
+
+  1) test Capture:
+     Error: NoResult
+      at file:///Users/shaws/Code/temper-regex-parser/temper.out/temper-core/js/index.js:4:34
+      at ModuleJob.run (node:internal/modules/esm/module_job:193:25)
+
+  2) test Escaped Dot:
+     Error: NoResult
+      at file:///Users/shaws/Code/temper-regex-parser/temper.out/temper-core/js/index.js:4:34
+      at ModuleJob.run (node:internal/modules/esm/module_job:193:25)
+
+  3) test Escaped Parens:
+     Error: NoResult
+      at file:///Users/shaws/Code/temper-regex-parser/temper.out/temper-core/js/index.js:4:34
+      at ModuleJob.run (node:internal/modules/esm/module_job:193:25)
+
+  4) test Escaped Square Brace:
+     Error: NoResult
+      at file:///Users/shaws/Code/temper-regex-parser/temper.out/temper-core/js/index.js:4:34
+      at ModuleJob.run (node:internal/modules/esm/module_job:193:25)
+
+  5) test Escpaed Curly Braces:
+     Error: NoResult
+      at file:///Users/shaws/Code/temper-regex-parser/temper.out/temper-core/js/index.js:4:34
+      at ModuleJob.run (node:internal/modules/esm/module_job:193:25)
+
+  6) test Escaped Backslash:
+     Error: NoResult
+      at file:///Users/shaws/Code/temper-regex-parser/temper.out/temper-core/js/index.js:4:34
+      at ModuleJob.run (node:internal/modules/esm/module_job:193:25)
+
+  7) test Id:
+     Error: NoResult
+      at file:///Users/shaws/Code/temper-regex-parser/temper.out/temper-core/js/index.js:4:34
+      at ModuleJob.run (node:internal/modules/esm/module_job:193:25)
+
+  8) test Sub:
+     Error: NoResult
+      at file:///Users/shaws/Code/temper-regex-parser/temper.out/temper-core/js/index.js:4:34
+      at ModuleJob.run (node:internal/modules/esm/module_job:193:25)
+
+
+

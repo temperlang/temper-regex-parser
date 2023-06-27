@@ -1,0 +1,285 @@
+
+let { ... } = import("std/regex");
+let { sub, subWith } = import("./regex.temper");
+let { Parser } = import("./parser.temper");
+
+let isCodePointWordChar(code: Int): Boolean {
+  (48 <= code && code <= 57) // this range is 0 to 9, like above
+         || (65 <= code && code <= 90) // this range is A to Z (uppercase)
+         || (97 <= code && code <= 122) // this range is a to z (lowercase)
+}
+
+class Matcher {
+  public str: List<String>;
+  public head: Int;
+  public groups: MapBuilder<String, Group>;
+  public depth: Int;
+
+  constructor(src: String): Void {
+    str = src.split("");
+    head = 0;
+    groups = new MapBuilder<String, Group>();
+  }
+
+  public advance(): Void {
+    // console.log("${head.toString()} next");
+    head += 1;
+  }
+
+  public setHead(val: Int): Void {
+    // console.log("${head.toString()} to ${val.toString()}");
+    head = val;
+  }
+
+  public matchCapture(regex: Capture): Boolean | NoResult {
+    var begin = head;
+    if (matchRegex(regex.item)) {
+      var end = head;
+      var list = new ListBuilder<String>();
+      for (var i = begin; i < end; i++) {
+        list.add(str[i]);
+      }
+      var text = list.join("", fn(s: String): String{s});
+      // console.log("${regex.name}: ${text}")
+      groups[regex.name] = new Group(regex.name, text, begin);
+      true
+    } else {
+      setHead(begin);
+      false
+    }
+  }
+
+  public matchCodePoints(regex: CodePoints): Boolean | NoResult {
+    if (depth == 0) {
+      var split = regex.value.split("");
+      if (head + split.length - 1 >= str.length) {
+        return false;
+      }
+      for (var i = 0; i < split.length ; i++) {
+        if (str[head+i] != split[i]) {
+          return false;
+        }
+      }
+      for (var i = 0; i < split.length; i++) {
+        advance();
+      }
+      return true;
+    } else {
+      var split = regex.value.split("");
+      if (head >= str.length) {
+        return false;
+      }
+      for (var i = 0; i < split.length ; i++) {
+        if (str[head] == split[i]) {
+          advance();
+          return true;
+        }
+      }
+      return false;
+    }
+  }
+
+  public matchDot(): Boolean | NoResult {
+    var ok = head < str.length;
+    if (ok) {
+      advance();
+    }
+    ok
+  }
+
+  public matchDigit(): Boolean | NoResult {
+    if (head >= str.length) {
+      return false;
+    }
+    var code = str[head].codePoints.read();
+    var ok = 48 <= code && code <= 57;
+    //       ^^ ascii '0'          ^^ ascii '9' 
+    if (ok) {
+      advance();
+    }
+    ok
+  }
+
+  public matchWord(): Boolean | NoResult {
+    if (head >= str.length) {
+      return false;
+    }
+    var code = str[head].codePoints.read();
+    var ok = isCodePointWordChar(code);
+    if (ok) {
+      advance();
+    }
+    ok
+  }
+
+  public matchSpecial(regex: Special): Boolean | NoResult {
+    match (regex) {
+      Begin -> head == 0;
+      Dot -> matchDot();
+      End -> head == str.length;
+      WordBoundary -> isCodePointWordChar(str[head].codePoints.read() orelse 0)
+        != isCodePointWordChar(str[head].codePoints.read() orelse 0);
+      Digit -> matchDigit();
+      Space -> head < str.length && (
+        str[head] == ' '
+        || str[head] == '\t'
+        || str[head] == '\r'
+        || str[head] == '\n'
+      );
+      Word -> matchWord();
+      else -> fail();
+    }
+  }
+
+  public matchCodeRange(regex: CodeRange): Boolean | NoResult {
+    if (head >= str.length) {
+      return false;
+    }
+    var n = str[head].codePoints.read();
+    if (regex.min <= n && n <= regex.max) {
+      advance();
+      return true;
+    }
+    return false;
+  }
+
+  public matchCodeSet(regex: CodeSet): Boolean | NoResult {
+    var begin = head;
+    if (!regex.negated) {
+      for (var i = 0; i < regex.items.length; i++) {
+        depth += 1;
+        var res = matchRegex(regex.items[i]);
+        depth -= 1;
+        if (res) {
+          return true;
+        }
+        setHead(begin);
+      }
+      return false;
+    } else {
+      for (var i = 0; i < regex.items.length; i++) {
+        depth += 1;
+        var res = matchRegex(regex.items[i]);
+        depth -= 1;
+        if (res) {
+          setHead(begin);
+          return false;
+        }
+      }
+      return true;
+    }
+  }
+
+  public matchOr(regex: Or): Boolean | NoResult {
+    var start = head;
+    for (var i = 0; i < regex.items.length; i++) {
+      if (matchRegex(regex.items[i])) {
+        return true;
+      }
+    }
+    setHead(start);
+    return false
+  }
+
+  public matchRepeat(regex: Repeat): Boolean | NoResult {
+    var start = head;
+    for (var i = 0; i < regex.min; i++) {
+      if (!matchRegex(regex.item)) {
+        setHead(start);
+        return false;
+      }
+    }
+    if (regex.max == null) {
+      while (true) {
+        var mid = head;
+        if (!matchRegex(regex.item)) {
+          setHead(mid);
+          return true;
+        }
+      }
+    } else {
+      for (var i = regex.min; i < regex.max; i++) {
+        var mid = head;
+        if (!matchRegex(regex.item)) {
+          setHead(mid);
+          return true;
+        }
+      }
+      return true;
+    }
+  }
+
+  public matchSequence(regex: Sequence): Boolean | NoResult {
+    var start = head;
+    for (var i = 0; i < regex.items.length; i++) {
+      if (!matchRegex(regex.items[i])) {
+        setHead(start);
+        return false;
+      }
+    }
+    return true;
+  }
+
+  public matchRegex(regex: Regex): Boolean | NoResult {
+    match (regex) {
+      is Capture -> matchCapture(regex);
+      is CodePoints -> matchCodePoints(regex);
+      is CodeRange -> matchCodeRange(regex);
+      is CodeSet -> matchCodeSet(regex);
+      is Or -> matchOr(regex);
+      is Repeat -> matchRepeat(regex);
+      is Sequence -> matchSequence(regex);
+      is Special -> matchSpecial(regex);
+      else -> fail();
+    }
+  }
+}
+
+interface TemperRegex {
+  public constructor(data: Regex);
+  public found(text: String): Boolean | NoResult;
+  public find(text: String): Map<String, Group> | NoResult;
+}
+
+export class TemperCompiledRegex extends TemperRegex {
+  public regex: Regex;
+
+  public constructor(data: Regex) {
+    regex = data;
+  }
+
+  public found(text: String): Boolean | NoResult {
+    for (var i = 0; i < text.codePoints.length; i++) {
+      var m = new Matcher(text);
+      m.setHead(i);
+      if (m.matchRegex(regex) orelse false) {
+        return true;
+      }
+    }
+    return false;
+  }
+  
+  public find(text: String): Map<String, Group> | NoResult {
+    var t = text.split("");
+    for (var i = 0; i < text.codePoints.length; i++) {
+      var j = t.join("", fn(s: String): String{s});
+      var m = new Matcher(j);
+      if (m.matchRegex(regex) orelse false) {
+        return m.groups.toMap();
+      }
+      t = t.slice(1, t.length);
+    }
+    fail();
+  }
+}
+
+export let compileWith(src: String, keys: List<String>, values: List<Regex>): TemperCompiledRegex | NoResult {
+  let regex = subWith(src, keys, values);
+  new TemperCompiledRegex(new Capture("full", regex))
+}
+
+export let compile(src: String): TemperCompiledRegex | NoResult {
+  let parser = new Parser(src);
+  let regex = parser.readOr();
+  new TemperCompiledRegex(new Capture("full", regex))
+}

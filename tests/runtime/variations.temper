@@ -1,0 +1,67 @@
+let { CodePoints } = import("std/regex");
+let { test, assert, TestFixtureBase } = import("std/testing");
+let { sub, subWith } = import("../../regex.temper");
+let { compile, compileWith, TemperCompiledRegex } = import("../../runtime.temper");
+
+let checkValue(value: String, expected: String): Void {
+  assert(value == expected) { "Expected ${expected}, not ${value}" }
+}
+
+let check(re: TemperCompiledRegex): Void {
+  checkValue(re.find("all")["full"].value, expected = "a");
+  checkValue(re.find("beautify")["full"].value, expected = "b");
+  checkValue(re.find("can")["full"].value, expected = "c");
+  checkValue(re.find("demonstrate")["full"].value, expected = "d");
+  checkValue(re.find("regex")["full"].value, expected = "e");
+  checkValue(re.find("functions")["full"].value, expected = "f");
+}
+
+export class VariationsTest {
+  @test public testCodeSet(): Void | NoResult {
+    check(compile("[abcdef]"));
+  }
+
+  @test public testOr(): Void | NoResult {
+    check(compile("a|b|c|d|e|f"));
+  }
+
+  @test public testCodeRange(): Void | NoResult {
+    check(compile("[a-f]"));
+  }
+
+  @test public testSub(): Void | NoResult {
+    let regex = compileWith(
+      "(?$a-through-f)",
+      [
+        "a-through-f",
+      ],
+      [
+        subWith(
+          "(?$char-a)|(?$char-b)|(?$char-c)|(?$char-d)|(?$char-e)|(?$char-f)",
+          [
+            "char-a",
+            "char-b",
+            "char-c",
+            "char-d",
+            "char-e",
+            "char-f",
+          ],
+          [
+            // Make one explicit simple string just for demo.
+            new CodePoints("a"),
+            subWith(
+              "(?$char-b)",
+              [ "char-b" ],
+              [ sub("b") ]
+            ),
+            sub("(?cee=c)"),
+            sub("(d)"),
+            sub("(e|e)"),
+            sub("[f-f]"),
+          ]
+        ),
+      ]
+    );
+    check(regex);
+  }
+}

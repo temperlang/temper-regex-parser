@@ -1,6 +1,6 @@
 let { CompiledRegex, Group } = import("std/regex");
 let { test, assert, TestFixtureBase } = import("std/testing");
-let { compileWith, sub } = import("../regex.temper");
+let { compileWith, sub } = import("../../regex.temper");
 
 let run(regex: CompiledRegex): Void {
   let found = regex.find("Shaw Summa");

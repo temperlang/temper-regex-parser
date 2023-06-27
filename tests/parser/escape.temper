@@ -1,0 +1,46 @@
+let { CompiledRegex } = import("std/regex");
+let { test, assert, TestFixtureBase } = import("std/testing");
+let { compile } = import("../../regex.temper");
+
+export class SimpleIdTest {
+  @test public testEscapedDot(): Void | NoResult {
+    let regex = compile("\\.\\w+");
+    let expected = ".net";
+    let id = regex.find("the ${expected} runtime")["full"].value;
+    assert(id == expected) { "Expected ${expected}, not: ${id}" }
+  }
+
+  @test public testEscapedParens(): Void | NoResult {
+    let regex = compile("\\(?\\d\\d\\d\\)? (?mid=867) (?last=5309)");
+    let expected = "(570) 867 5309";
+    let id = regex.find("the numbers 867 5309 are not actually used in any phone number due a *certain* song, like ${expected}")["full"].value;
+    assert(id == expected) { "Expected ${expected}, not: ${id}" }
+  }
+
+  @test public testEscapedSquareBrace(): Void | NoResult {
+    let regex = compile("\\[[yn]\\]");
+    do {
+      let expected = "[y]";
+      let id = regex.find("continue (y/n): ${expected}")["full"].value;
+      assert(id == expected) { "Expected ${expected}, not: ${id}" }
+    }
+    do {
+      let expected = "[n]";
+      let id = regex.find("use empty password: ${expected}")["full"].value;
+      assert(id == expected) { "Expected ${expected}, not: ${id}" }
+    }
+  }
+
+  @test public testEscpaedCurlyBraces(): Void | NoResult {
+    let regex = compile(":\\}");
+    let expected = ":}";
+    let id = regex.find("when i write temper i feel like smiling ${expected}")["full"].value;
+    assert(id == expected) { "Expected ${expected}, not: ${id}" }
+  }
+
+  @test public testEscapedBackslash(): Void | NoResult {
+    let regex = compile("\\\\");
+    let expected = "\\";
+    let id = regex.find("playing dominoes... ||||${expected}")["full"].value;
+  }
+}

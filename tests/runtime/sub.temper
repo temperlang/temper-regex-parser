@@ -1,0 +1,25 @@
+let { test, assert, TestFixtureBase } = import("std/testing");
+let { compile, compileWith, TemperCompiledRegex } = import("../../runtime.temper");
+let { sub } = import("../../regex.temper");
+
+let run(regex: TemperCompiledRegex): Void {
+  let found = regex.find("Shaw Summa");
+  let check(name: String, expected: String): Void {
+    let value = found[name].value;
+    assert(value == expected) { "Unexpected: ${value}" }
+  }
+  check("full", expected = "Shaw Summa");
+  check("first", expected = "Shaw");
+  check("last", expected = "Summa");
+}
+
+export class SubTest {
+  @test public testSub(): Void | NoResult {
+    let regex = compileWith(
+      "(?first=(?$Word)) (?last=(?$Word))",
+      [ "Word" ],
+      [ sub("\\b\\w+\\b") ],
+    );
+    run(regex);
+  }
+}
