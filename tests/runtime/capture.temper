@@ -3,11 +3,8 @@ let { compile } = import("../../runtime.temper");
 
 export class SimpleCaptureTest {
   @test public testCapture(): Void | NoResult {
-    let regex1 = compile("1");
-    let full = regex1.find("1")["full"].value;
-    assert(full == "1") { "Expected 1, not: ${full}" }
-    // let regex2 = compile("(?cent=\\d)(?tens=\\d)(?ones=\\d)");
-    // let tens = regex2.find("123")["tens"].value;
-    // assert(tens == "2") { "Expected 2, not: ${tens}" }
+    let regex2 = compile("(?cent=\\d)(?tens=\\d)(?ones=\\d)");
+    let tens = regex2.find("123")["tens"].value;
+    assert(tens == "2") { "Expected 2, not: ${tens}" }
   }
 }
