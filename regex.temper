@@ -126,21 +126,21 @@ class Parser {
           fail()
         } else if (matchChar("=")) {
           error("postivie lookhead is not supported");
-          fail();
+          fail()
         } else if (matchChar("<")) {
           if (matchChar("=")) {
             error("postivie lookbehind is not supported");
-            fail();
+            fail()
           } else if (matchChar("!")) {
             error("negative lookbehind is not supported");
-            fail();
+            fail()
           } else {
             error("unknown sequence (<${peek()}");
-            fail();
+            fail()
           }
         } else if (matchChar("!")) {
           error("negative lookahead is not supported");
-          fail();
+          fail()
         } else {
           let str = new ListBuilder<String>();
           while (matchChar(" ")) {}
@@ -190,7 +190,7 @@ class Parser {
         || matchChar("{") || matchChar("}")
         || matchChar(".") || matchChar("\\")
       ) {
-        new CodePoints(escapeCode);
+        new CodePoints(escapeCode)
       } else {
         error("unknown escape code: \\${peek()}");
         fail()
