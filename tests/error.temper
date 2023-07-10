@@ -7,22 +7,22 @@ export class ErrorTest {
     // Verify that the infrastructure works.
     // Usually, we'll be checking for errors in this file.
     // TODO Remove explicit `void` result if we can adjust java codegen.
-    assert(hasResult { compile("ok"); void }) { "expected result" }
+    assert(hasResult { compile("ok"); }) { "expected result" }
   }
 
   @test public unclosedCapture(): Void {
     // TODO Remove explicit `void` result if we can adjust java codegen.
-    assertNoResult { compile("(unclosed"); void }
+    assertNoResult { compile("(unclosed"); }
   }
 
   @test public unclosedCodePointGroup(): Void {
-    assertNoResult { compile("[group-unclosed") }
+    assertNoResult { compile("[group-unclosed"); }
   }
 
   @test public unclosedNamedCaptureName(): Void {
-    assertNoResult { compile("(?name") }
-    assertNoResult { compile("(?name=") }
-    assertNoResult { compile("(?") }
+    assertNoResult { compile("(?name"); }
+    assertNoResult { compile("(?name="); }
+    assertNoResult { compile("(?"); }
   }
 }
 
