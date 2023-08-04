@@ -1,5 +1,5 @@
 let { CompiledRegex, Group } = import("std/regex");
-let { test, assert, TestFixtureBase } = import("std/testing");
+let { assert } = import("std/testing");
 let { compileWith, sub } = import("../regex.temper");
 
 let run(regex: CompiledRegex): Void {
@@ -13,13 +13,11 @@ let run(regex: CompiledRegex): Void {
   check("last", expected = "Summa");
 }
 
-export class SubTest {
-  @test public testSub(): Void | NoResult {
-    let regex = compileWith(
-      "(?first=(?$Word)) (?last=(?$Word))",
-      [ "Word" ],
-      [ sub("\\b\\w+\\b") ],
-    );
-    run(regex);
-  }
+@test let testSub(): Void | NoResult {
+  let regex = compileWith(
+    "(?first=(?$Word)) (?last=(?$Word))",
+    [ "Word" ],
+    [ sub("\\b\\w+\\b") ],
+  );
+  run(regex);
 }
