@@ -2,23 +2,23 @@ let { CompiledRegex } = import("std/regex");
 let { assert } = import("std/testing");
 let { compile } = import("../regex.temper");
 
-@test let ok(): Void {
+test("ok") {
   // Verify that the infrastructure works.
   // Usually, we'll be checking for errors in this file.
   // TODO Remove explicit `void` result if we can adjust java codegen.
   assert(hasResult { compile("ok"); }) { "expected result" }
 }
 
-@test let unclosedCapture(): Void {
+test("unclosed capture") {
   // TODO Remove explicit `void` result if we can adjust java codegen.
   assertNoResult { compile("(unclosed"); }
 }
 
-@test let unclosedCodePointGroup(): Void {
+test("unclosed code point group") {
   assertNoResult { compile("[group-unclosed"); }
 }
 
-@test let unclosedNamedCaptureName(): Void {
+test("unclosed named capture name") {
   assertNoResult { compile("(?name"); }
   assertNoResult { compile("(?name="); }
   assertNoResult { compile("(?"); }

@@ -2,21 +2,21 @@ let { CompiledRegex } = import("std/regex");
 let { assert } = import("std/testing");
 let { compile } = import("../regex.temper");
 
-@test let testEscapedDot(): Void | NoResult {
+test("escaped dot") {
   let regex = compile("\\.\\w+");
   let expected = ".net";
   let id = regex.find("the ${expected} runtime")["full"].value;
   assert(id == expected) { "Expected ${expected}, not: ${id}" }
 }
 
-@test let testEscapedParens(): Void | NoResult {
+test("escaped parens") {
   let regex = compile("\\(?\\d\\d\\d\\)? (?mid=867) (?last=5309)");
   let expected = "(570) 867 5309";
   let id = regex.find("the numbers 867 5309 are not actually used in any phone number due a *certain* song, like ${expected}")["full"].value;
   assert(id == expected) { "Expected ${expected}, not: ${id}" }
 }
 
-@test let testEscapedSquareBrace(): Void | NoResult {
+test("escaped square brace") {
   let regex = compile("\\[[yn]\\]");
   do {
     let expected = "[y]";
@@ -30,14 +30,14 @@ let { compile } = import("../regex.temper");
   }
 }
 
-@test let testEscpaedCurlyBraces(): Void | NoResult {
+test("escaped curly braces") {
   let regex = compile(":\\}");
   let expected = ":}";
   let id = regex.find("when i write temper i feel like smiling ${expected}")["full"].value;
   assert(id == expected) { "Expected ${expected}, not: ${id}" }
 }
 
-@test let testEscapedBackslash(): Void | NoResult {
+test("escaped backslash") {
   let regex = compile("\\\\");
   let expected = "\\";
   let id = regex.find("playing dominoes... ||||${expected}")["full"].value;

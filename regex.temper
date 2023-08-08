@@ -8,7 +8,7 @@ class Slot {
 
 class Parser {
   public chars: List<String>;
-  public pos: Int;
+  public var pos: Int;
   public slots: ListBuilder<Slot>;
   public errors: ListBuilder<String>;
 

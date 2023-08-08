@@ -15,19 +15,19 @@ let check(re: CompiledRegex): Void {
   checkValue(re.find("functions")["full"].value, expected = "f");
 }
 
-@test let testCodeSet(): Void | NoResult {
+test("code set") {
   check(compile("[abcdef]"));
 }
 
-@test let testOr(): Void | NoResult {
+test("or") {
   check(compile("a|b|c|d|e|f"));
 }
 
-@test let testCodeRange(): Void | NoResult {
+test("code range") {
   check(compile("[a-f]"));
 }
 
-@test let testSub(): Void | NoResult {
+test("sub") {
   let regex = compileWith(
     "(?$a-through-f)",
     [
