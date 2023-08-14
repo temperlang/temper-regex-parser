@@ -1,5 +1,4 @@
 let { CompiledRegex } = import("std/regex");
-let { assert } = import("std/testing");
 let { compile } = import("../regex.temper");
 
 test("escaped dot") {

@@ -1,5 +1,4 @@
 let { CompiledRegex, Group } = import("std/regex");
-let { assert } = import("std/testing");
 let { compileWith, sub } = import("../regex.temper");
 
 let run(regex: CompiledRegex): Void {
