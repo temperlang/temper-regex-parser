@@ -1,5 +1,4 @@
 let { CompiledRegex, Group } = import("std/regex");
-let { assert } = import("std/testing");
 let { compileWith, sub } = import("../regex.temper");
 
 let run(regex: CompiledRegex): Void {
@@ -13,7 +12,7 @@ let run(regex: CompiledRegex): Void {
   check("last", expected = "Summa");
 }
 
-@test let testSub(): Void | NoResult {
+test("sub") {
   let regex = compileWith(
     "(?first=(?$Word)) (?last=(?$Word))",
     [ "Word" ],

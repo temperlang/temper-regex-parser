@@ -1,8 +1,7 @@
 let { CompiledRegex } = import("std/regex");
-let { assert } = import("std/testing");
 let { compile } = import("../regex.temper");
 
-@test let testCapture(): Void | NoResult {
+test("capture") {
   let regex = compile("(?cent=\\d)(?tens=\\d)(?ones=\\d)");
   let tens = regex.find("123")["tens"].value;
   assert(tens == "2") { "Expected 2, not: ${tens}" }
