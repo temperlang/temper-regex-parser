@@ -2,7 +2,8 @@ let { CodePoints, CompiledRegex } = import("std/regex");
 let { compile, compileWith, sub, subWith } = import("../regex.temper");
 
 let checkValue(value: String, expected: String): Void {
-  assert(value == expected) { "Expected ${expected}, not ${value}" }
+  // Hack around lack of test reification in backends for now.
+  new Test().assert(value == expected) { "Expected ${expected}, not ${value}" }
 }
 
 let check(re: CompiledRegex): Void {

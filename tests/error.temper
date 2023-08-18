@@ -24,7 +24,8 @@ test("unclosed named capture name") {
 }
 
 let assertNoResult(action: fn(): Void | NoResult): Void {
-  assert(!hasResult(action)) { "expected no result" }
+  // Hack around lack of test reification in backends for now.
+  new Test().assert(!hasResult(action)) { "expected no result" }
 }
 
 let hasResult(action: fn(): Void | NoResult): Boolean {
