@@ -96,7 +96,7 @@ class Parser {
     if (matchChar("[")) {
       return charClassBody();
     } 
-    if (matchChar("(")) {
+    return if (matchChar("(")) {
       if (matchChar("?")) {
         // non capturing group
         if (matchChar(":")) {
@@ -125,11 +125,11 @@ class Parser {
           error("no such slot: ${str}");
           fail()
         } else if (matchChar("=")) {
-          error("postivie lookhead is not supported");
+          error("positive lookhead is not supported");
           fail()
         } else if (matchChar("<")) {
           if (matchChar("=")) {
-            error("postivie lookbehind is not supported");
+            error("positive lookbehind is not supported");
             fail()
           } else if (matchChar("!")) {
             error("negative lookbehind is not supported");
@@ -197,7 +197,7 @@ class Parser {
       }
     } else {
       new CodePoints(read())
-    }
+    };
   }
 
   public readSeq(): Regex | NoResult {
