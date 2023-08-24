@@ -1,23 +1,22 @@
 let { CompiledRegex, Group } = import("std/regex");
 let { compileWith, sub } = import("../regex.temper");
 
-let run(regex: CompiledRegex): Void {
+let run(test: Test, regex: CompiledRegex): Void {
   let found = regex.find("Shaw Summa");
   let check(name: String, expected: String): Void {
     let value = found[name].value;
-    // Hack around lack of test reification in backends for now.
-    new Test().assert(value == expected) { "Unexpected: ${value}" }
+    test.assert(value == expected) { "Unexpected: ${value}" }
   }
   check("full", expected = "Shaw Summa");
   check("first", expected = "Shaw");
   check("last", expected = "Summa");
 }
 
-test("sub") {
+test("sub") { (test: Test): Void | NoResult;;
   let regex = compileWith(
     "(?first=(?$Word)) (?last=(?$Word))",
     [ "Word" ],
     [ sub("\\b\\w+\\b") ],
   );
-  run(regex);
+  run(test, regex);
 }

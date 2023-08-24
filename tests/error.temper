@@ -4,28 +4,25 @@ let { compile } = import("../regex.temper");
 test("ok") {
   // Verify that the infrastructure works.
   // Usually, we'll be checking for errors in this file.
-  // TODO Remove explicit `void` result if we can adjust java codegen.
   assert(hasResult { compile("ok"); }) { "expected result" }
 }
 
-test("unclosed capture") {
-  // TODO Remove explicit `void` result if we can adjust java codegen.
-  assertNoResult { compile("(unclosed"); }
+test("unclosed capture") { (test: Test): Void | NoResult;;
+  assertNoResult(test) { compile("(unclosed"); }
 }
 
-test("unclosed code point group") {
-  assertNoResult { compile("[group-unclosed"); }
+test("unclosed code point group") { (test: Test): Void | NoResult;;
+  assertNoResult(test) { compile("[group-unclosed"); }
 }
 
-test("unclosed named capture name") {
-  assertNoResult { compile("(?name"); }
-  assertNoResult { compile("(?name="); }
-  assertNoResult { compile("(?"); }
+test("unclosed named capture name") { (test: Test): Void | NoResult;;
+  assertNoResult(test) { compile("(?name"); }
+  assertNoResult(test) { compile("(?name="); }
+  assertNoResult(test) { compile("(?"); }
 }
 
-let assertNoResult(action: fn(): Void | NoResult): Void {
-  // Hack around lack of test reification in backends for now.
-  new Test().assert(!hasResult(action)) { "expected no result" }
+let assertNoResult(test: Test, action: fn(): Void | NoResult): Void | NoResult {
+  test.assert(!hasResult(action)) { "expected no result" }
 }
 
 let hasResult(action: fn(): Void | NoResult): Boolean {
