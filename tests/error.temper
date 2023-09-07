@@ -4,25 +4,25 @@ let { compile } = import("../regex.temper");
 test("ok") {
   // Verify that the infrastructure works.
   // Usually, we'll be checking for errors in this file.
-  assert(hasResult { compile("ok"); }) { "expected result" }
+  assert(hasResult { compile("ok"); });
 }
 
-test("unclosed capture") { (test: Test): Void | NoResult;;
+test("unclosed capture") { (test);;
   assertNoResult(test) { compile("(unclosed"); }
 }
 
-test("unclosed code point group") { (test: Test): Void | NoResult;;
+test("unclosed code point group") { (test);;
   assertNoResult(test) { compile("[group-unclosed"); }
 }
 
-test("unclosed named capture name") { (test: Test): Void | NoResult;;
+test("unclosed named capture name") { (test);;
   assertNoResult(test) { compile("(?name"); }
   assertNoResult(test) { compile("(?name="); }
   assertNoResult(test) { compile("(?"); }
 }
 
-let assertNoResult(test: Test, action: fn(): Void | NoResult): Void | NoResult {
-  test.assert(!hasResult(action)) { "expected no result" }
+let assertNoResult(test: Test, action: fn(): Void | NoResult): Void {
+  assert(!hasResult(action));
 }
 
 let hasResult(action: fn(): Void | NoResult): Boolean {
