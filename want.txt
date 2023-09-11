@@ -1,0 +1,28 @@
+found abc: true
+matches abc: true
+found ac: true
+matches ac: true
+found bbabac: true
+matches bbabac: true
+found ab: false
+matches ab: false
+found dc: false
+matches dc: false
+found acc: true
+matches acc: false
+found cbc: true
+matches cbc: false
+match group 'full': 'aaabbcee' at 1
+match group 'intro': 'bb' at 4
+match group 'option1': '' at -1
+match group 'alphaOption2': 'e' at 8
+replaced: 🌍-e-f
+not replaced: nope
+No match says sorry
+or option 1: true
+or option 2: true
+or option none: false
+begin true: true
+begin false: false
+negated basic true: true
+negated basic false: false

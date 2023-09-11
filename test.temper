@@ -1,0 +1,164 @@
+let { ... } = import("std/regex");
+
+// Equivalent to: let regex = /(?:ab)+c/;
+let regex = new Sequence([
+  oneOrMore(new CodeSet([new CodePoints("ab")])),
+  new CodePoints("c"),
+]).compiled();
+let full = entire(regex.data).compiled();
+
+test("found: abc") {
+  assert(regex.found("abc"))
+}
+
+test("full: abc") {
+  assert(full.found("abc"))
+}
+
+test("found: ac") {
+  assert(regex.found("ac"))
+}
+
+test("full: ac") {
+  assert(full.found("ac"))
+}
+
+test("found: bbabac") {
+  assert(regex.found("bbabac"))
+}
+
+test("full: bbabac") {
+  assert(full.found("bbabac"))
+}
+
+test("!found: ab") {
+  assert(!regex.found("ab"))
+}
+
+test("!full: ab") {
+  assert(!full.found("ab"))
+}
+
+test("!found: dc") {
+  assert(!regex.found("dc"))
+}
+
+test("!full: dc") {
+  assert(!full.found("dc"))
+}
+
+test("found: acc") {
+  assert(regex.found("acc"))
+}
+
+test("!full: acc") {
+  assert(!full.found("acc"))
+}
+
+test("found: cbc") {
+  assert(regex.found("cbc"))
+}
+
+test("!full: cbc") {
+  assert(!full.found("cbc"))
+}
+
+// // Equivalent to: /a+ (?intro = b+) c ((?option1 = d) | (?alphaOption2 = e))+/
+let catcher = new Sequence([
+  oneOrMore(new CodePoints("a")),
+  { name: "intro", item: oneOrMore(new CodePoints("b")) },
+  new CodePoints("c"),
+  oneOrMore(
+    new Or([
+      { name: "option1", item: new CodePoints("d") },
+      { name: "alphaOption2", item: new CodePoints("e") },
+    ])
+  ),
+]).compiled();
+
+let groups = catcher.find("🌍aaabbceef");
+let ngroups = groups.toList().length;
+
+test("groups: size") {
+  assert(ngroups == 4) { "wanted 4 groups, got the wrong number" }
+}
+
+test("groups full: value") {
+  assert(groups["full"].value == "aaabbcee");
+}
+
+test("groups full: begin") {
+  assert(groups["full"].codePointsBegin == 1);
+}
+
+test("groups intro: value") {
+  assert(groups["intro"].value == "bb");
+}
+
+test("groups intro: begin") {
+  assert(groups["intro"].codePointsBegin == 4);
+}
+
+test("groups option1: value") {
+  assert(groups["option1"].value == "");
+}
+
+test("groups option1: begin") {
+  assert(groups["option1"].codePointsBegin == -1);
+}
+
+test("groups alphaOption2: value") {
+  assert(groups["alphaOption2"].value == "e");
+}
+
+test("groups alphaOption2: begin") {
+  assert(groups["alphaOption2"].codePointsBegin == 8);
+}
+
+// groups.toList().map { (entry): Int;;
+//   let { name, value, codePointsBegin } = entry.value;
+//   console.log(
+//     "match group '${name}': '${value}' at ${codePointsBegin.toString()}"
+//   );
+//   0
+// }
+// // let replaced = catcher.replace<Result>("🌍aaabbceef") { (result);; ... }
+// let replaced = catcher.replace("🌍aaabbceef") { (groups);;
+//   // Can we compile-time convert callbacks to simple template as applicable?
+//   "-${groups["option1"].value}${groups["alphaOption2"].value}-"
+// };
+// console.log("replaced: ${replaced}");
+// // Also check a no-match case.
+// let notReplaced = catcher.replace("nope") { (groups);; "hi" };
+// console.log("not replaced: ${notReplaced}");
+// let noMatch = catcher.find("not here")["full"].value orelse "sorry";
+// console.log("No match says ${noMatch}");
+// let or = new Or([new CodePoints("ab"), new CodePoints("bc")]);
+// let option1 = "ab";
+// let option2 = "bc";
+// let optionNone = "cb";
+// console.log("or option 1: ${or.found(option1).toString()}");
+// console.log("or option 2: ${or.found(option2).toString()}");
+// console.log("or option none: ${or.found(optionNone).toString()}");
+// let begin = new Sequence([Begin, new CodePoints("a")]);
+// let beginsWithATrue = "ab";
+// let beginsWithAFalse = "bab";
+// console.log("begin true: ${begin.found(beginsWithATrue).toString()}");
+// console.log("begin false: ${begin.found(beginsWithAFalse).toString()}");
+// let negatedBasic = entire(
+//   new Sequence([
+//     // Having this extra item in the sequence makes a difference for causing
+//     // the tricky behavior in JS that we work around in our translation.
+//     new CodePoints("a"),
+//     {
+//       items: [new CodeRange("a".codePoints.read(), "c".codePoints.read())],
+//       negated: true,
+//     },
+//   ])
+// ).compiled();
+// let nbTrue = "a🌍";
+// let nbFalse = "ac";
+// console.log("negated basic true: ${negatedBasic.found(nbTrue).toString()}");
+// console.log("negated basic false: ${
+//   negatedBasic.found(nbFalse).toString()
+// }");

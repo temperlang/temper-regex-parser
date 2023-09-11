@@ -1,7 +1,5 @@
 
 let { ... } = import("std/regex");
-let { sub, subWith } = import("./regex.temper");
-let { Parser } = import("./parser.temper");
 
 let isCodePointWordChar(code: Int): Boolean {
   (48 <= code && code <= 57) // this range is 0 to 9, like above
@@ -19,6 +17,7 @@ class Matcher {
     str = src.split("");
     head = 0;
     groups = new MapBuilder<String, Group>();
+    depth = 0;
   }
 
   public advance(): Void {
@@ -31,7 +30,7 @@ class Matcher {
     head = val;
   }
 
-  public matchCapture(regex: Capture): Boolean | NoResult {
+  public matchCapture(regex: Capture): Boolean {
     var begin = head;
     if (matchRegex(regex.item)) {
       var end = head;
@@ -40,7 +39,6 @@ class Matcher {
         list.add(str[i]);
       }
       var text = list.join("", fn(s: String): String{s});
-      // console.log("${regex.name}: ${text}")
       groups[regex.name] = new Group(regex.name, text, begin);
       return true;
     } else {
@@ -49,14 +47,11 @@ class Matcher {
     }
   }
 
-  public matchCodePoints(regex: CodePoints): Boolean | NoResult {
+  public matchCodePoints(regex: CodePoints): Boolean {
     if (depth == 0) {
       var split = regex.value.split("");
-      if (head + split.length - 1 >= str.length) {
-        return false;
-      }
       for (var i = 0; i < split.length ; i++) {
-        if (str[head+i] != split[i]) {
+        if ((str[head+i] orelse "") != split[i]) {
           return false;
         }
       }
@@ -66,11 +61,8 @@ class Matcher {
       return true;
     } else {
       var split = regex.value.split("");
-      if (head >= str.length) {
-        return false;
-      }
       for (var i = 0; i < split.length ; i++) {
-        if (str[head] == split[i]) {
+        if ((str[head] orelse "") == split[i]) {
           advance();
           return true;
         }
@@ -79,7 +71,7 @@ class Matcher {
     }
   }
 
-  public matchDot(): Boolean | NoResult {
+  public matchDot(): Boolean {
     return if (head < str.length) {
       advance();
       true
@@ -88,7 +80,7 @@ class Matcher {
     }
   }
 
-  public matchDigit(): Boolean | NoResult {
+  public matchDigit(): Boolean {
     if (head >= str.length) {
       return false;
     }
@@ -101,7 +93,7 @@ class Matcher {
     }
   }
 
-  public matchWord(): Boolean | NoResult {
+  public matchWord(): Boolean {
     if (isCodePointWordChar(str[head].codePoints.read() orelse 0)) {
       advance();
       return true;
@@ -110,37 +102,37 @@ class Matcher {
     }
   }
 
-  public matchWordBoundary(): Boolean | NoResult {
+  public matchWordBoundary(): Boolean {
     return isCodePointWordChar(str[head-1].codePoints.read() orelse 0)
         != isCodePointWordChar(str[head].codePoints.read() orelse 0);
   }
 
-  public matchSpecial(regex: Special): Boolean | NoResult {
+  public matchSpecial(regex: Special): Boolean {
     if (regex == Begin) {
-      head == 0;
+      return head == 0;
     } else if (regex == Dot) { 
-      matchDot();
-    } else if (regex == End) { 
-      head == str.length;
+      return matchDot();
+    } else if (regex == End) {
+      return head >= str.length;
     } else if (regex == WordBoundary) { 
-      matchWordBoundary();
+      return matchWordBoundary();
     } else if (regex == Digit) {
-      matchDigit();
+      return matchDigit();
     } else if(regex == Space) {
-      head < str.length && (
+      return head < str.length && (
         str[head] == ' '
         || str[head] == '\t'
         || str[head] == '\r'
         || str[head] == '\n'
-      )
+      );
     } else if (regex == Word) {
-      matchWord()
+      return matchWord();
     } else {
-      fail();
+      return false;
     }
   }
 
-  public matchCodeRange(regex: CodeRange): Boolean | NoResult {
+  public matchCodeRange(regex: CodeRange): Boolean {
     if (head >= str.length) {
       return false;
     }
@@ -153,7 +145,7 @@ class Matcher {
     }
   }
 
-  public matchCodeSet(regex: CodeSet): Boolean | NoResult {
+  public matchCodeSet(regex: CodeSet): Boolean {
     var begin = head;
     if (regex.negated) {
       for (var i = 0; i < regex.items.length; i++) {
@@ -161,10 +153,11 @@ class Matcher {
         var res = matchRegex(regex.items[i]);
         depth -= 1;
         if (res) {
-          setHead(begin);
-          return false;
+          return false
         }
+        setHead(begin);
       }
+      advance();
       return true;
     } else {
       for (var i = 0; i < regex.items.length; i++) {
@@ -180,7 +173,7 @@ class Matcher {
     }
   }
 
-  public matchOr(regex: Or): Boolean | NoResult {
+  public matchOr(regex: Or): Boolean {
     var start = head;
     for (var i = 0; i < regex.items.length; i++) {
       if (matchRegex(regex.items[i])) {
@@ -191,7 +184,7 @@ class Matcher {
     return false;
   }
 
-  public matchRepeat(regex: Repeat): Boolean | NoResult {
+  public matchRepeat(regex: Repeat): Boolean {
     var start = head;
     for (var i = 0; i < regex.min; i++) {
       if (!matchRegex(regex.item)) {
@@ -219,7 +212,7 @@ class Matcher {
     }
   }
 
-  public matchSequence(regex: Sequence): Boolean | NoResult {
+  public matchSequence(regex: Sequence): Boolean {
     var start = head;
     for (var i = 0; i < regex.items.length; i++) {
       if (!matchRegex(regex.items[i])) {
@@ -230,7 +223,7 @@ class Matcher {
     return true;
   }
 
-  public matchRegex(regex: Regex): Boolean | NoResult {
+  public matchRegex(regex: Regex): Boolean {
     match (regex) {
       is Capture -> matchCapture(regex);
       is CodePoints -> matchCodePoints(regex);
@@ -240,29 +233,51 @@ class Matcher {
       is Repeat -> matchRepeat(regex);
       is Sequence -> matchSequence(regex);
       is Special -> matchSpecial(regex);
-      else -> fail();
+      else -> false;
+    }
+  }
+
+  public resetGroups(regex: Regex): Void {
+    match (regex) {
+      is Capture -> do {
+        groups[regex.name] = new Group(regex.name, "", -1);
+        resetGroups(regex.item);
+      }
+      is Repeat -> resetGroups(regex.item);
+      is Or -> do {
+        for (var i = 0; i < regex.items.length; i++) {
+          resetGroups(regex.items[i]);
+        }
+      }
+      is Sequence -> do {
+        for (var i = 0; i < regex.items.length; i++) {
+          resetGroups(regex.items[i]);
+        }
+      }
+      else -> false;
     }
   }
 }
 
 interface TemperRegex {
   public constructor(data: Regex);
-  public found(text: String): Boolean | NoResult;
-  public find(text: String): Map<String, Group> | NoResult;
+  public found(text: String): Boolean;
+  public find(text: String): Map<String, Group>;
 }
 
 export class TemperCompiledRegex extends TemperRegex {
-  public regex: Regex;
+  public data: Regex;
 
-  public constructor(data: Regex) {
-    regex = data;
+  public constructor(re: Regex) {
+    data = re;
   }
 
-  public found(text: String): Boolean | NoResult {
+  public found(text: String): Boolean {
     for (var i = 0; i < text.codePoints.length; i++) {
       var m = new Matcher(text);
       m.setHead(i);
-      if (m.matchRegex(regex) orelse false) {
+      m.resetGroups(data);
+      if (m.matchRegex(data)) {
         return true;
       }
     }
@@ -270,26 +285,14 @@ export class TemperCompiledRegex extends TemperRegex {
   }
   
   public find(text: String): Map<String, Group> | NoResult {
-    var t = text.split("");
     for (var i = 0; i < text.codePoints.length; i++) {
-      var j = t.join("", fn(s: String): String{s});
-      var m = new Matcher(j);
-      if (m.matchRegex(regex) orelse false) {
+      var m = new Matcher(text);
+      m.setHead(i);
+      m.resetGroups(data);
+      if (m.matchRegex(data)) {
         return m.groups.toMap();
       }
-      t = t.slice(1, t.length);
     }
-    fail();
+    fail()
   }
-}
-
-export let compileWith(src: String, keys: List<String>, values: List<Regex>): TemperCompiledRegex | NoResult {
-  let regex = subWith(src, keys, values);
-  new TemperCompiledRegex(new Capture("full", regex))
-}
-
-export let compile(src: String): TemperCompiledRegex | NoResult {
-  let parser = new Parser(src);
-  let regex = parser.readOr();
-  new TemperCompiledRegex(new Capture("full", regex))
 }
