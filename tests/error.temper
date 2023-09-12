@@ -4,28 +4,28 @@ let { compile } = import("../regex.temper");
 test("ok") {
   // Verify that the infrastructure works.
   // Usually, we'll be checking for errors in this file.
-  assert(hasResult { compile("ok"); }) { "expected result" }
+  assert(hasResult { compile("ok"); });
 }
 
-test("unclosed capture") { (test: Test): Void | NoResult;;
-  assertNoResult(test) { compile("(unclosed"); }
+test("unclosed capture") { (test);;
+  assertBubble(test) { compile("(unclosed"); }
 }
 
-test("unclosed code point group") { (test: Test): Void | NoResult;;
-  assertNoResult(test) { compile("[group-unclosed"); }
+test("unclosed code point group") { (test);;
+  assertBubble(test) { compile("[group-unclosed"); }
 }
 
-test("unclosed named capture name") { (test: Test): Void | NoResult;;
-  assertNoResult(test) { compile("(?name"); }
-  assertNoResult(test) { compile("(?name="); }
-  assertNoResult(test) { compile("(?"); }
+test("unclosed named capture name") { (test);;
+  assertBubble(test) { compile("(?name"); }
+  assertBubble(test) { compile("(?name="); }
+  assertBubble(test) { compile("(?"); }
 }
 
-let assertNoResult(test: Test, action: fn(): Void | NoResult): Void | NoResult {
-  test.assert(!hasResult(action)) { "expected no result" }
+let assertBubble(test: Test, action: fn(): Void | Bubble): Void {
+  assert(!hasResult(action));
 }
 
-let hasResult(action: fn(): Void | NoResult): Boolean {
+let hasResult(action: fn(): Void | Bubble): Boolean {
   do {
     action();
     true

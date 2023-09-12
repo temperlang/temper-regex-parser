@@ -1,11 +1,11 @@
 let { CodePoints, CompiledRegex } = import("std/regex");
 let { compile, compileWith, sub, subWith } = import("../regex.temper");
 
-let checkValue(test: Test, value: String, expected: String): Void | NoResult {
-  test.assert(value == expected) { "Expected ${expected}, not ${value}" }
+let checkValue(test: Test, value: String, expected: String): Void {
+  assert(value == expected) { "Expected ${expected}, not ${value}" }
 }
 
-let check(test: Test, re: CompiledRegex): Void | NoResult {
+let check(test: Test, re: CompiledRegex): Void | Bubble {
   checkValue(test, re.find("all")["full"].value, expected = "a");
   checkValue(test, re.find("beautify")["full"].value, expected = "b");
   checkValue(test, re.find("can")["full"].value, expected = "c");
@@ -14,19 +14,19 @@ let check(test: Test, re: CompiledRegex): Void | NoResult {
   checkValue(test, re.find("functions")["full"].value, expected = "f");
 }
 
-test("code set") { (test: Test): Void | NoResult;;
+test("code set") { (test);;
   check(test, compile("[abcdef]"));
 }
 
-test("or") { (test: Test): Void | NoResult;;
+test("or") { (test);;
   check(test, compile("a|b|c|d|e|f"));
 }
 
-test("code range") { (test: Test): Void | NoResult;;
+test("code range") { (test);;
   check(test, compile("[a-f]"));
 }
 
-test("sub") { (test: Test): Void | NoResult;;
+test("sub") { (test);;
   let regex = compileWith(
     "(?$a-through-f)",
     [

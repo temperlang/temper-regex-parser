@@ -5,14 +5,14 @@ let run(test: Test, regex: CompiledRegex): Void {
   let found = regex.find("Shaw Summa");
   let check(name: String, expected: String): Void {
     let value = found[name].value;
-    test.assert(value == expected) { "Unexpected: ${value}" }
+    assert(value == expected) { "Unexpected: ${value}" }
   }
   check("full", expected = "Shaw Summa");
   check("first", expected = "Shaw");
   check("last", expected = "Summa");
 }
 
-test("sub") { (test: Test): Void | NoResult;;
+test("sub") { (test);;
   let regex = compileWith(
     "(?first=(?$Word)) (?last=(?$Word))",
     [ "Word" ],
