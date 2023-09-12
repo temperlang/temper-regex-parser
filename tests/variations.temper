@@ -5,7 +5,7 @@ let checkValue(test: Test, value: String, expected: String): Void {
   assert(value == expected) { "Expected ${expected}, not ${value}" }
 }
 
-let check(test: Test, re: CompiledRegex): Void | NoResult {
+let check(test: Test, re: CompiledRegex): Void | Bubble {
   checkValue(test, re.find("all")["full"].value, expected = "a");
   checkValue(test, re.find("beautify")["full"].value, expected = "b");
   checkValue(test, re.find("can")["full"].value, expected = "c");

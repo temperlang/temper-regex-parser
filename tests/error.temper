@@ -8,24 +8,24 @@ test("ok") {
 }
 
 test("unclosed capture") { (test);;
-  assertNoResult(test) { compile("(unclosed"); }
+  assertBubble(test) { compile("(unclosed"); }
 }
 
 test("unclosed code point group") { (test);;
-  assertNoResult(test) { compile("[group-unclosed"); }
+  assertBubble(test) { compile("[group-unclosed"); }
 }
 
 test("unclosed named capture name") { (test);;
-  assertNoResult(test) { compile("(?name"); }
-  assertNoResult(test) { compile("(?name="); }
-  assertNoResult(test) { compile("(?"); }
+  assertBubble(test) { compile("(?name"); }
+  assertBubble(test) { compile("(?name="); }
+  assertBubble(test) { compile("(?"); }
 }
 
-let assertNoResult(test: Test, action: fn(): Void | NoResult): Void {
+let assertBubble(test: Test, action: fn(): Void | Bubble): Void {
   assert(!hasResult(action));
 }
 
-let hasResult(action: fn(): Void | NoResult): Boolean {
+let hasResult(action: fn(): Void | Bubble): Boolean {
   do {
     action();
     true
