@@ -2,7 +2,7 @@ let { CodePoints, CompiledRegex } = import("std/regex");
 let { compile, compileWith, sub, subWith } = import("../regex.temper");
 
 let checkValue(test: Test, value: String, expected: String): Void {
-  assert(value == expected) { "Expected ${expected}, not ${value}" }
+  assert(value == expected);
 }
 
 let check(test: Test, re: CompiledRegex): Void | Bubble {

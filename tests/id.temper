@@ -5,5 +5,5 @@ test("id") {
   let regex = compile("\\b[a-zA-Z_][a-zA-Z0-9_]*\\b");
   let expected = "c_symbol1";
   let id = regex.find("123_abc ${expected} c_symbol2")["full"].value;
-  assert(id == expected) { "Expected ${expected}, not: ${id}" }
+  assert(id == expected);
 }
