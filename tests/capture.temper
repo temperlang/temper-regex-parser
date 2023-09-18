@@ -4,5 +4,5 @@ let { compile } = import("../regex.temper");
 test("capture") {
   let regex = compile("(?cent=\\d)(?tens=\\d)(?ones=\\d)");
   let tens = regex.find("123")["tens"].value;
-  assert(tens == "2") { "Expected 2, not: ${tens}" }
+  assert(tens == "2");
 }

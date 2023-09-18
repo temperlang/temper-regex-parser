@@ -5,7 +5,7 @@ let run(test: Test, regex: CompiledRegex): Void {
   let found = regex.find("Shaw Summa");
   let check(name: String, expected: String): Void {
     let value = found[name].value;
-    assert(value == expected) { "Unexpected: ${value}" }
+    assert(value == expected);
   }
   check("full", expected = "Shaw Summa");
   check("first", expected = "Shaw");
