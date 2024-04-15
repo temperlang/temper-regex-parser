@@ -1,6 +1,3 @@
-let { CompiledRegex } = import("std/regex");
-let { compile } = import("../regex.temper");
-
 test("ok") {
   // Verify that the infrastructure works.
   // Usually, we'll be checking for errors in this file.

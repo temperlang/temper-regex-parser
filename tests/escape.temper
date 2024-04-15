@@ -1,6 +1,3 @@
-let { CompiledRegex } = import("std/regex");
-let { compile } = import("../regex.temper");
-
 test("escaped dot") {
   let regex = compile("\\.\\w+");
   let expected = ".net";

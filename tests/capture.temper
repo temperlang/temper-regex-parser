@@ -1,6 +1,3 @@
-let { CompiledRegex } = import("std/regex");
-let { compile } = import("../regex.temper");
-
 test("capture") {
   let regex = compile("(?cent=\\d)(?tens=\\d)(?ones=\\d)");
   let tens = regex.find("123")["tens"].value;

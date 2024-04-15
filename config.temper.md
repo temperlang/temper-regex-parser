@@ -1,9 +1,15 @@
+# Temper Regex Parser
 
     export let name = "temper-regex-parser";
-    import("./regex.temper");
-    import("./tests/capture.temper");
-    import("./tests/error.temper");
-    import("./tests/id.temper");
-    import("./tests/sub.temper");
-    import("./tests/variations.temper");
-    import("./tests/escape.temper");
+    import(".");
+    import("./tests");
+
+## Backend Config
+
+### Java
+
+Use same core packaging plans as temper-core and std.
+
+    export let javaGroup = "dev.temperlang";
+    export let javaArtifact = "temper-regex-parser";
+    export let javaPackage = "temper.regex_parser";
