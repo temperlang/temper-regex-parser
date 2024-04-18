@@ -1,6 +1,11 @@
 # Temper Regex Parser
 
     export let name = "temper-regex-parser";
+    export let version = "0.1.0";
+
+We keep tests in a separate module right now, and we don't import tests from
+prod code, so import both explicitly from config.
+
     import(".");
     import("./tests");
 
