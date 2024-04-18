@@ -3,6 +3,16 @@
     export let name = "temper-regex-parser";
     export let version = "0.1.0";
 
+## Metadata
+
+    export let authors = "Temper Contributors";
+    export let description = "Parser for the Temper regex dialect";
+    export let homepage = "https://temperlang.dev/";
+    export let license = "Apache-2.0";
+    export let repository = "https://github.com/temperlang/temper-regex-parser";
+
+## Imports
+
 We keep tests in a separate module right now, and we don't import tests from
 prod code, so import both explicitly from config.
 
