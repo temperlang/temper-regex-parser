@@ -1,29 +1,25 @@
-let { CodePoints, CompiledRegex } = import("std/regex");
-let { compile, compileWith, sub, subWith } = import("../regex.temper");
-
-let checkValue(test: Test, value: String, expected: String): Void {
-  assert(value == expected);
-}
-
-let check(test: Test, re: CompiledRegex): Void | Bubble {
-  checkValue(test, re.find("all")["full"].value, expected = "a");
-  checkValue(test, re.find("beautify")["full"].value, expected = "b");
-  checkValue(test, re.find("can")["full"].value, expected = "c");
-  checkValue(test, re.find("demonstrate")["full"].value, expected = "d");
-  checkValue(test, re.find("regex")["full"].value, expected = "e");
-  checkValue(test, re.find("functions")["full"].value, expected = "f");
+let checkVariation(test: Test, re: CompiledRegex): Void | Bubble {
+  let check(string: String, expected: String): Void {
+    assert(re.find(string)["full"].value == expected);
+  }
+  check("all", expected = "a");
+  check("beautify", expected = "b");
+  check("can", expected = "c");
+  check("demonstrate", expected = "d");
+  check("regex", expected = "e");
+  check("functions", expected = "f");
 }
 
 test("code set") { (test);;
-  check(test, compile("[abcdef]"));
+  checkVariation(test, compile("[abcdef]"));
 }
 
 test("or") { (test);;
-  check(test, compile("a|b|c|d|e|f"));
+  checkVariation(test, compile("a|b|c|d|e|f"));
 }
 
 test("code range") { (test);;
-  check(test, compile("[a-f]"));
+  checkVariation(test, compile("[a-f]"));
 }
 
 test("sub") { (test);;
@@ -59,5 +55,5 @@ test("sub") { (test);;
       ),
     ]
   );
-  check(test, regex);
+  checkVariation(test, regex);
 }

@@ -1,7 +1,4 @@
-let { CompiledRegex, Group } = import("std/regex");
-let { compileWith, sub } = import("../regex.temper");
-
-let run(test: Test, regex: CompiledRegex): Void {
+let checkSub(test: Test, regex: CompiledRegex): Void {
   let found = regex.find("Shaw Summa");
   let check(name: String, expected: String): Void {
     let value = found[name].value;
@@ -18,5 +15,5 @@ test("sub") { (test);;
     [ "Word" ],
     [ sub("\\b\\w+\\b") ],
   );
-  run(test, regex);
+  checkSub(test, regex);
 }
