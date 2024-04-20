@@ -13,7 +13,7 @@ test("sub") { (test);;
   let regex = compileWith(
     "(?first=(?$Word)) (?last=(?$Word))",
     [ "Word" ],
-    [ sub("\\b\\w+\\b") ],
+    [ parse("\\b\\w+\\b") ],
   );
   checkSub(test, regex);
 }

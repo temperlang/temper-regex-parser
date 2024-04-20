@@ -29,7 +29,7 @@ test("sub") { (test);;
       "a-through-f",
     ],
     [
-      subWith(
+      parseWith(
         "(?$char-a)|(?$char-b)|(?$char-c)|(?$char-d)|(?$char-e)|(?$char-f)",
         [
           "char-a",
@@ -42,15 +42,15 @@ test("sub") { (test);;
         [
           // Make one explicit simple string just for demo.
           new CodePoints("a"),
-          subWith(
+          parseWith(
             "(?$char-b)",
             [ "char-b" ],
-            [ sub("b") ]
+            [ parse("b") ]
           ),
-          sub("(?cee=c)"),
-          sub("(d)"),
-          sub("(e|e)"),
-          sub("[f-f]"),
+          parse("(?cee=c)"),
+          parse("(d)"),
+          parse("(e|e)"),
+          parse("[f-f]"),
         ]
       ),
     ]
