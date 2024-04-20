@@ -1,2 +1,2 @@
-let { CodePoints, CompiledRegex } = import("std/regex");
+let { CodePoints, CompiledRegex, Regex } = import("std/regex");
 let { compile, compileWith, parse, parseWith } = import("..");

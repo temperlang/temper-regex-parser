@@ -1,24 +1,22 @@
-let Slot = Pair<String, Regex>;
-
 class Parser {
   public chars: List<String>;
   public var pos: Int;
-  public slots: ListBuilder<Slot>;
+  public slots: MapBuilder<String, Regex>;
   public errors: ListBuilder<String>;
 
-  public constructor(str: String) {
+  public constructor(str: String, slots: Mapped<String, Regex> = new Map([])) {
     chars = str.split("");
     pos = 0;
-    slots = new ListBuilder<Slot>();
+    this.slots = slots.toMapBuilder();
     errors = new ListBuilder<String>();
   }
 
   public addString(name: String, text: String): Void {
-    slots.add(new Slot(name, new CodePoints(text)));
+    slots[name] = new CodePoints(text);
   }
 
   public addRegex(name: String, regex: Regex): Void {
-    slots.add(new Slot(name, regex));
+    slots[name] = regex;
   }
 
   public error(e: String): Void {
@@ -110,14 +108,10 @@ class Parser {
             parts.add(read());
           }
           let str = parts.join("", fn(s: String): String{s});
-          for (var i = 0; i < slots.length; i++) {
-            let slot = slots[i];
-            if (slot.key == str) {
-              return slot.value;
-            }
+          slots[str] orelse do {
+            error("no such slot: ${str}");
+            bubble()
           }
-          error("no such slot: ${str}");
-          bubble()
         } else if (matchChar("=")) {
           error("positive lookhead is not supported");
           bubble()
