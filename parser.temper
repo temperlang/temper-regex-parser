@@ -1,22 +1,15 @@
 class Parser {
   public chars: List<String>;
   public var pos: Int;
-  public slots: MapBuilder<String, Regex>;
+  public slots: Mapped<String, Regex>;
   public errors: ListBuilder<String>;
 
+  /** The [slots] aren't copied, so do any parsing synchronously. */
   public constructor(str: String, slots: Mapped<String, Regex> = new Map([])) {
     chars = str.split("");
     pos = 0;
-    this.slots = slots.toMapBuilder();
+    this.slots = slots;
     errors = new ListBuilder<String>();
-  }
-
-  public addString(name: String, text: String): Void {
-    slots[name] = new CodePoints(text);
-  }
-
-  public addRegex(name: String, regex: Regex): Void {
-    slots[name] = regex;
   }
 
   public error(e: String): Void {

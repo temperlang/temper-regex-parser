@@ -5,24 +5,20 @@ export let compileWith(
   src: String,
   slots: Mapped<String, Regex>,
 ): CompiledRegex | Bubble {
-  let regex = parseWith(src, slots);
-  regex.compiled()
+  parseWith(src, slots).compiled()
 }
 
 export let compile(src: String): CompiledRegex | Bubble {
-  let regex = parse(src);
-  regex.compiled()
+  parse(src).compiled()
 }
 
 export let parseWith(
   src: String,
   slots: Mapped<String, Regex>,
 ): Regex | Bubble {
-  let parser = new Parser(src, slots);
-  parser.readOr()
+  new Parser(src, slots).readOr()
 }
 
 export let parse(src: String): Regex | Bubble {
-  let parser = new Parser(src);
-  parser.readOr()
+  new Parser(src).readOr()
 }
