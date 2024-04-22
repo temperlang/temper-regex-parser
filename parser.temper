@@ -186,7 +186,10 @@ class Parser {
       let regex = readSingle();
       seq.add(readPostfix(regex));
     }
-    new Sequence(seq.toList())
+    match (seq.length) {
+      1 -> seq[0];
+      else -> new Sequence(seq.toList());
+    }
   }
 
   public readOr(): Regex | Bubble {
@@ -200,6 +203,9 @@ class Parser {
       let regex = readSeq();
       ors.add(regex);
     }
-    new Or(ors.toList())
+    match (ors.length) {
+      1 -> ors[0];
+      else -> new Or(ors.toList());
+    }
   }
 }
