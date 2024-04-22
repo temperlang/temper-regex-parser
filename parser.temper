@@ -79,9 +79,8 @@ class Parser {
 
   public readSingle(): Regex | Bubble {
     if (matchChar("[")) {
-      return charClassBody();
-    } 
-    return if (matchChar("(")) {
+      charClassBody()
+    } else if (matchChar("(")) {
       if (matchChar("?")) {
         // non capturing group
         if (matchChar(":")) {
@@ -178,7 +177,7 @@ class Parser {
       }
     } else {
       new CodePoints(read())
-    };
+    }
   }
 
   public readSeq(): Regex | Bubble {
