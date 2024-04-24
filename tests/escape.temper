@@ -1,19 +1,19 @@
 test("escaped dot") {
-  let regex = compile("\\.\\w+");
+  let regex = compile(raw"\.\w+");
   let expected = ".net";
   let id = regex.find("the ${expected} runtime")["full"].value;
   assert(id == expected);
 }
 
 test("escaped parens") {
-  let regex = compile("\\(?\\d\\d\\d\\)? (?mid=867) (?last=5309)");
+  let regex = compile(raw"\(?\d\d\d\)? (?mid=867) (?last=5309)");
   let expected = "(570) 867 5309";
   let id = regex.find("the numbers 867 5309 are not actually used in any phone number due a *certain* song, like ${expected}")["full"].value;
   assert(id == expected);
 }
 
 test("escaped square brace") {
-  let regex = compile("\\[[yn]\\]");
+  let regex = compile(raw"\[[yn]\]");
   do {
     let expected = "[y]";
     let id = regex.find("continue (y/n): ${expected}")["full"].value;
@@ -27,14 +27,14 @@ test("escaped square brace") {
 }
 
 test("escaped curly braces") {
-  let regex = compile(":\\}");
+  let regex = compile(raw":\}");
   let expected = ":}";
   let id = regex.find("when i write temper i feel like smiling ${expected}")["full"].value;
   assert(id == expected);
 }
 
 test("escaped backslash") {
-  let regex = compile("\\\\");
+  let regex = compile(raw"\\");
   let expected = "\\";
   let id = regex.find("playing dominoes... ||||${expected}")["full"].value;
 }

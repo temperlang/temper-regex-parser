@@ -175,6 +175,9 @@ class Parser {
         error("unknown escape code: \\${peek()}");
         bubble()
       }
+    } else if (matchChar("+") || matchChar("*") || matchChar("?")) {
+      error("invalid repeat");
+      bubble()
     } else {
       new CodePoints(read())
     }
@@ -182,10 +185,28 @@ class Parser {
 
   public readSeq(): Regex | Bubble {
     let seq = new ListBuilder<Regex>();
-    while (!isDone() && peek() != "|" && peek() != ")") {
-      let regex = readSingle();
-      seq.add(readPostfix(regex));
+    // Maintain a buffer for sequential code points.
+    let codeBuffer = new ListBuilder<String>();
+    let popCodeBuffer(): Void {
+      if (!codeBuffer.isEmpty) {
+        seq.add(new CodePoints(codeBuffer.join("") { (it);; it }));
+        // TODO Add `clear` method to ListBuilder for efficiency.
+        codeBuffer.splice(0);
+      }
     }
+    // Loop through everything at this level.
+    while (!isDone() && peek() != "|" && peek() != ")") {
+      let regex = readPostfix(readSingle());
+      match (regex) {
+        is CodePoints -> codeBuffer.add(regex.value);
+        else -> do {
+          popCodeBuffer();
+          seq.add(regex);
+        }
+      }
+    }
+    popCodeBuffer();
+    // Finish result.
     match (seq.length) {
       1 -> seq[0];
       else -> new Sequence(seq.toList());
