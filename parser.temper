@@ -47,6 +47,10 @@ class Parser {
     }
   }
 
+  matchRepeat(): Boolean {
+    matchChar("+") || matchChar("*") || matchChar("?")
+  }
+
   public charClassBody(): Regex | Bubble {
     let invert = matchChar("^");
     let opts = new ListBuilder<CodePart>();
@@ -169,13 +173,14 @@ class Parser {
         || matchChar("[") || matchChar("]")
         || matchChar("{") || matchChar("}")
         || matchChar(".") || matchChar("\\")
+        || matchRepeat()
       ) {
         new CodePoints(escapeCode)
       } else {
         error("unknown escape code: \\${peek()}");
         bubble()
       }
-    } else if (matchChar("+") || matchChar("*") || matchChar("?")) {
+    } else if (matchRepeat()) {
       error("invalid repeat");
       bubble()
     } else {

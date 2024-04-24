@@ -12,6 +12,10 @@ test("escaped parens") {
   assert(id == expected);
 }
 
+test("escaped repeat") {
+  assert(compile(raw"\?\*\+").found("?*+"));
+}
+
 test("escaped square brace") {
   let regex = compile(raw"\[[yn]\]");
   do {
