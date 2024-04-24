@@ -1,6 +1,6 @@
 test("bad repeat") {
-  assert(do { compile("?"); false } orelse true);
-  assert(do { compile("a**"); false } orelse true);
+  assert(do { parse("?"); false } orelse true);
+  assert(do { parse("a**"); false } orelse true);
 }
 
 test("restraint") {
