@@ -25,35 +25,23 @@ test("code range") { (test);;
 test("sub") { (test);;
   let regex = compileWith(
     "(?$a-through-f)",
-    [
-      "a-through-f",
-    ],
-    [
-      subWith(
+    new Map([
+      new Pair("a-through-f", parseWith(
         "(?$char-a)|(?$char-b)|(?$char-c)|(?$char-d)|(?$char-e)|(?$char-f)",
-        [
-          "char-a",
-          "char-b",
-          "char-c",
-          "char-d",
-          "char-e",
-          "char-f",
-        ],
-        [
+        new Map([
           // Make one explicit simple string just for demo.
-          new CodePoints("a"),
-          subWith(
+          new Pair("char-a", new CodePoints("a").as<Regex>()),
+          new Pair("char-b", parseWith(
             "(?$char-b)",
-            [ "char-b" ],
-            [ sub("b") ]
-          ),
-          sub("(?cee=c)"),
-          sub("(d)"),
-          sub("(e|e)"),
-          sub("[f-f]"),
-        ]
-      ),
-    ]
+            new Map([ new Pair("char-b", parse("b")) ]),
+          )),
+          new Pair("char-c", parse("(?cee=c)")),
+          new Pair("char-d", parse("(d)")),
+          new Pair("char-e", parse("(e|e)")),
+          new Pair("char-f", parse("[f-f]")),
+        ]),
+      )),
+    ]),
   );
   checkVariation(test, regex);
 }

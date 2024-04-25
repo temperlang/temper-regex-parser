@@ -1,27 +1,24 @@
 
 let { ... } = import("std/regex");
 
-export let compileWith(src: String, keys: List<String>, values: List<Regex>): CompiledRegex | Bubble {
-  let regex = subWith(src, keys, values);
-  new Capture("full", regex).compiled()
+export let compileWith(
+  src: String,
+  slots: Mapped<String, Regex>,
+): CompiledRegex | Bubble {
+  parseWith(src, slots).compiled()
 }
 
 export let compile(src: String): CompiledRegex | Bubble {
-  let parser = new Parser(src);
-  let regex = parser.readOr();
-  new Capture("full", regex).compiled()
+  parse(src).compiled()
 }
 
-export let subWith(src: String, keys: List<String>, values: List<Regex>): Regex | Bubble {
-  let parser = new Parser(src);
-  for (var i = 0; i < keys.length && i < values.length; i++) {
-    let val = values[i];
-    parser.addRegex(keys[i], val);
-  }
-  parser.readOr()
+export let parseWith(
+  src: String,
+  slots: Mapped<String, Regex>,
+): Regex | Bubble {
+  new Parser(src, slots).readOr()
 }
 
-export let sub(src: String): Regex | Bubble {
-  let parser = new Parser(src);
-  parser.readOr()
+export let parse(src: String): Regex | Bubble {
+  new Parser(src).readOr()
 }

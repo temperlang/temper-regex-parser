@@ -12,8 +12,7 @@ let checkSub(test: Test, regex: CompiledRegex): Void {
 test("sub") { (test);;
   let regex = compileWith(
     "(?first=(?$Word)) (?last=(?$Word))",
-    [ "Word" ],
-    [ sub("\\b\\w+\\b") ],
+    new Map([ new Pair("Word", parse("\\b\\w+\\b")) ]),
   );
   checkSub(test, regex);
 }
