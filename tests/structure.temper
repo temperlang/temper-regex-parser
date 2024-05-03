@@ -1,0 +1,22 @@
+test("bad repeat") {
+  assert(do { parse("?"); false } orelse true);
+  assert(do { parse("a**"); false } orelse true);
+}
+
+test("restraint") {
+  // Ensure we don't merge c on the back of other code points.
+  let regex = compile("abc?");
+  assert(!regex.found(""));
+  assert(regex.found("ab"));
+  assert(regex.found("abc"));
+}
+
+test("structure") {
+  // Ensure we merge code points where possible and avoid excess nesting.
+  let codes = parse("abc").as<CodePoints>();
+  assert(codes.value == "abc");
+  let seq = parse("abc.efg").as<Sequence>();
+  assert(seq.items[0].as<CodePoints>().value == "abc");
+  assert(seq.items[1] == Dot) { "not dot" };
+  assert(seq.items[2].as<CodePoints>().value == "efg");
+}

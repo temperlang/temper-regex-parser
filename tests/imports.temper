@@ -1,0 +1,4 @@
+// Both are well known and directly relevant to the current library.
+// So surprise me imports are ok.
+let { ... } = import("std/regex");
+let { ... } = import("..");

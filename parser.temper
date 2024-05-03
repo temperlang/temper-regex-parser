@@ -1,30 +1,15 @@
-
-let { ... } = import("std/regex");
-
-class Slot {
-  public name: String;
-  public regex: Regex;
-}
-
 class Parser {
   public chars: List<String>;
   public var pos: Int;
-  public slots: ListBuilder<Slot>;
+  public slots: Mapped<String, Regex>;
   public errors: ListBuilder<String>;
 
-  public constructor(str: String) {
+  /** The [slots] aren't copied, so do any parsing synchronously. */
+  public constructor(str: String, slots: Mapped<String, Regex> = new Map([])) {
     chars = str.split("");
     pos = 0;
-    slots = new ListBuilder<Slot>();
+    this.slots = slots;
     errors = new ListBuilder<String>();
-  }
-
-  public addString(name: String, text: String): Void {
-    slots.add(new Slot(name, new CodePoints(text)));
-  }
-
-  public addRegex(name: String, regex: Regex): Void {
-    slots.add(new Slot(name, regex));
   }
 
   public error(e: String): Void {
@@ -62,12 +47,16 @@ class Parser {
     }
   }
 
-  public charClassBody(): Regex | NoResult {
+  matchRepeat(): Boolean {
+    matchChar("+") || matchChar("*") || matchChar("?")
+  }
+
+  public charClassBody(): Regex | Bubble {
     let invert = matchChar("^");
     let opts = new ListBuilder<CodePart>();
     while (!matchChar("]")) {
       if (isDone()) {
-        fail()
+        bubble()
       }
       let firstChar = read();
       if (matchChar("-")) {
@@ -92,18 +81,17 @@ class Parser {
     }
   }
 
-  public readSingle(): Regex | NoResult {
+  public readSingle(): Regex | Bubble {
     if (matchChar("[")) {
-      return charClassBody();
-    } 
-    return if (matchChar("(")) {
+      charClassBody()
+    } else if (matchChar("(")) {
       if (matchChar("?")) {
         // non capturing group
         if (matchChar(":")) {
           let regex = readOr();
           if (!matchChar(")")) {
             error("closing paren");
-            fail();
+            bubble();
           }
           regex
         } else if (matchChar("$")) {
@@ -111,43 +99,39 @@ class Parser {
           while (!matchChar(")")) {
             if (isDone()) {
               error("missing closing paren in (?$...)");
-              fail();
+              bubble();
             }
             parts.add(read());
           }
           let str = parts.join("", fn(s: String): String{s});
-          for (var i = 0; i < slots.length; i++) {
-            let slot = slots[i];
-            if (slot.name == str) {
-              return slot.regex;
-            }
+          slots[str] orelse do {
+            error("no such slot: ${str}");
+            bubble()
           }
-          error("no such slot: ${str}");
-          fail()
         } else if (matchChar("=")) {
           error("positive lookhead is not supported");
-          fail()
+          bubble()
         } else if (matchChar("<")) {
           if (matchChar("=")) {
             error("positive lookbehind is not supported");
-            fail()
+            bubble()
           } else if (matchChar("!")) {
             error("negative lookbehind is not supported");
-            fail()
+            bubble()
           } else {
             error("unknown sequence (<${peek()}");
-            fail()
+            bubble()
           }
         } else if (matchChar("!")) {
           error("negative lookahead is not supported");
-          fail()
+          bubble()
         } else {
           let str = new ListBuilder<String>();
           while (matchChar(" ")) {}
           while (!matchChar("=")) {
             if (isDone()) {
               error("missing = in (?${str.join("", fn(s: String): String{s})}=...)");
-              return fail()
+              return bubble()
             }
             str.add(read());
             while (matchChar(" ")) {}
@@ -155,7 +139,7 @@ class Parser {
           let regex = readOr();
           if (!matchChar(")")) {
             error("closing paren");
-            fail();
+            bubble();
           }
           let name = str.join("", fn(s: String): String{s});
           new Capture(name, regex)
@@ -164,7 +148,7 @@ class Parser {
         let regex = readOr();
         if (!matchChar(")")) {
           error("closing paren");
-          fail();
+          bubble();
         }
         regex
       }
@@ -189,62 +173,65 @@ class Parser {
         || matchChar("[") || matchChar("]")
         || matchChar("{") || matchChar("}")
         || matchChar(".") || matchChar("\\")
+        || matchRepeat()
       ) {
         new CodePoints(escapeCode)
       } else {
         error("unknown escape code: \\${peek()}");
-        fail()
+        bubble()
       }
+    } else if (matchRepeat()) {
+      error("invalid repeat");
+      bubble()
     } else {
       new CodePoints(read())
     };
   }
 
-  public readSeq(): Regex | NoResult {
+  public readSeq(): Regex | Bubble {
     let seq = new ListBuilder<Regex>();
-    while (!isDone() && peek() != "|" && peek() != ")") {
-      let regex = readSingle();
-      seq.add(readPostfix(regex));
+    // Maintain a buffer for sequential code points.
+    let codeBuffer = new ListBuilder<String>();
+    let popCodeBuffer(): Void {
+      if (!codeBuffer.isEmpty) {
+        seq.add(new CodePoints(codeBuffer.join("") { (it);; it }));
+        // TODO Add `clear` method to ListBuilder for efficiency.
+        codeBuffer.splice(0);
+      }
     }
-    new Sequence(seq.toList())
+    // Loop through everything at this level.
+    while (!isDone() && peek() != "|" && peek() != ")") {
+      let regex = readPostfix(readSingle());
+      match (regex) {
+        is CodePoints -> codeBuffer.add(regex.value);
+        else -> do {
+          popCodeBuffer();
+          seq.add(regex);
+        }
+      }
+    }
+    popCodeBuffer();
+    // Finish result.
+    match (seq.length) {
+      1 -> seq[0];
+      else -> new Sequence(seq.toList());
+    }
   }
 
-  public readOr(): Regex | NoResult {
+  public readOr(): Regex | Bubble {
     let ors = new ListBuilder<Regex>();
     while (!isDone() && peek() != ")") {
       if (ors.length != 0 && !matchChar("|")) {
         console.log(pos.toString());
         error("or");
-        fail();
+        bubble();
       }
       let regex = readSeq();
       ors.add(regex);
     }
-    new Or(ors.toList())
+    match (ors.length) {
+      1 -> ors[0];
+      else -> new Or(ors.toList());
+    }
   }
-}
-
-export let compileWith(src: String, keys: List<String>, values: List<Regex>): CompiledRegex | NoResult {
-  let regex = subWith(src, keys, values);
-  new Capture("full", regex).compiled()
-}
-
-export let compile(src: String): CompiledRegex | NoResult {
-  let parser = new Parser(src);
-  let regex = parser.readOr();
-  new Capture("full", regex).compiled()
-}
-
-export let subWith(src: String, keys: List<String>, values: List<Regex>): Regex | NoResult {
-  let parser = new Parser(src);
-  for (var i = 0; i < keys.length && i < values.length; i++) {
-    let val = values[i];
-    parser.addRegex(keys[i], val);
-  }
-  parser.readOr()
-}
-
-export let sub(src: String): Regex | NoResult {
-  let parser = new Parser(src);
-  parser.readOr()
 }
