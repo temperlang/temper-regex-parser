@@ -38,8 +38,16 @@ test("escaped curly braces") {
 }
 
 test("escaped backslash") {
-  let regex = compile(raw"\\");
+  let regex = compile("\\\\");
   let expected = "\\";
   let id = regex.find("playing dominoes... ||||${expected}")["full"].value;
+  assert(id == expected);
+}
+
+test("escaped whitespace") {
+  // The idea here is that escapes in raw form need to match actual whitespace.
+  let regex = compile(raw"\r\n\t[\r\n\t]");
+  let expected = "\r\n\t\t";
+  let id = regex.find("something${expected}something")["full"].value;
   assert(id == expected);
 }

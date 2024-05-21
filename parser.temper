@@ -16,6 +16,7 @@ class Parser {
   }
 
   public error(e: String): Void {
+    // TODO Track position also?
     errors.add("${e}");
   }
 
@@ -61,15 +62,68 @@ class Parser {
       if (isDone()) {
         bubble()
       }
-      let firstChar = read();
+      let first = charClassUnit();
       if (matchChar("-")) {
-        let secondChar = read();
-        opts.add(new CodeRange(firstChar.codePoints.read(), secondChar.codePoints.read()));
+        let second = charClassUnit();
+        opts.add(new CodeRange(extractCode(first), extractCode(second)));
       } else {
-        opts.add(new CodePoints(firstChar));
+        opts.add(first);
       }
     }
     new CodeSet(opts.toList(), invert)
+  }
+
+  charClassUnit(): CodePart | Bubble {
+    if (matchChar("\\")) {
+      finishEscape().as<CodePart>() orelse do {
+        error("invalid code part");
+        bubble()
+      }
+    } else {
+      new CodePoints(read())
+    }
+  }
+
+  extractCode(codePart: CodePart): Int | Bubble {
+    codePart.as<CodePoints>().value.codePoints.read() orelse do {
+      error("invalid range edge");
+      bubble()
+    }
+  }
+
+  finishEscape(): RegexNode | Bubble {
+    var escapeCode = peek();
+    if (matchChar("b")) {
+      WordBoundary
+    } else if (matchChar("d")) {
+      Digit
+    } else if (matchChar("n")) {
+      new CodePoints("\n")
+    } else if (matchChar("r")) {
+      new CodePoints("\r")
+    } else if (matchChar("s")) {
+      Space
+    } else if (matchChar("t")) {
+      new CodePoints("\t")
+    // TODO Need more support in temper core for hex decoding.
+    // } else if (matchChar("u")) {
+    //   if (matchChar("{")) {
+    //     //
+    //   }
+    } else if (matchChar("w")) {
+      Word
+    } else if (
+      matchChar("(") || matchChar(")")
+      || matchChar("[") || matchChar("]")
+      || matchChar("{") || matchChar("}")
+      || matchChar(".") || matchChar("\\")
+      || matchRepeat()
+    ) {
+      new CodePoints(escapeCode)
+    } else {
+      error("unknown escape code: \\${peek()}");
+      bubble()
+    }
   }
 
   public readPostfix(exist: RegexNode): RegexNode {
@@ -162,27 +216,7 @@ class Parser {
     } else if (matchChar(".")) {
       Dot
     } else if (matchChar("\\")) {
-      var escapeCode = peek();
-      if (matchChar("b")) {
-        WordBoundary
-      } else if (matchChar("d")) {
-        Digit
-      } else if (matchChar("w")) {
-        Word
-      } else if (matchChar("s")) {
-        Space
-      } else if (
-        matchChar("(") || matchChar(")")
-        || matchChar("[") || matchChar("]")
-        || matchChar("{") || matchChar("}")
-        || matchChar(".") || matchChar("\\")
-        || matchRepeat()
-      ) {
-        new CodePoints(escapeCode)
-      } else {
-        error("unknown escape code: \\${peek()}");
-        bubble()
-      }
+      finishEscape()
     } else if (matchRepeat()) {
       error("invalid repeat");
       bubble()
