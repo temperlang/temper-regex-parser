@@ -1,4 +1,4 @@
-let checkSub(test: Test, regex: CompiledRegex): Void {
+let checkSub(test: Test, regex: Regex): Void {
   let found = regex.find("Shaw Summa");
   let check(name: String, expected: String): Void {
     let value = found[name].value;

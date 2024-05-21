@@ -1,4 +1,4 @@
-let checkVariation(test: Test, re: CompiledRegex): Void | Bubble {
+let checkVariation(test: Test, re: Regex): Void | Bubble {
   let check(string: String, expected: String): Void {
     assert(re.find(string)["full"].value == expected);
   }
@@ -30,7 +30,7 @@ test("sub") { (test);;
         "(?$char-a)|(?$char-b)|(?$char-c)|(?$char-d)|(?$char-e)|(?$char-f)",
         new Map([
           // Make one explicit simple string just for demo.
-          new Pair("char-a", new CodePoints("a").as<Regex>()),
+          new Pair("char-a", new CodePoints("a").as<RegexNode>()),
           new Pair("char-b", parseWith(
             "(?$char-b)",
             new Map([ new Pair("char-b", parse("b")) ]),

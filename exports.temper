@@ -3,22 +3,22 @@ let { ... } = import("std/regex");
 
 export let compileWith(
   src: String,
-  slots: Mapped<String, Regex>,
-): CompiledRegex | Bubble {
+  slots: Mapped<String, RegexNode>,
+): Regex | Bubble {
   parseWith(src, slots).compiled()
 }
 
-export let compile(src: String): CompiledRegex | Bubble {
+export let compile(src: String): Regex | Bubble {
   parse(src).compiled()
 }
 
 export let parseWith(
   src: String,
-  slots: Mapped<String, Regex>,
-): Regex | Bubble {
+  slots: Mapped<String, RegexNode>,
+): RegexNode | Bubble {
   new Parser(src, slots).readOr()
 }
 
-export let parse(src: String): Regex | Bubble {
+export let parse(src: String): RegexNode | Bubble {
   new Parser(src).readOr()
 }
