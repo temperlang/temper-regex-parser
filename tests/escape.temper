@@ -41,4 +41,5 @@ test("escaped backslash") {
   let regex = compile(raw"\\");
   let expected = "\\";
   let id = regex.find("playing dominoes... ||||${expected}")["full"].value;
+  assert(id == expected);
 }

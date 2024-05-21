@@ -1,11 +1,14 @@
 class Parser {
   public chars: List<String>;
   public var pos: Int;
-  public slots: Mapped<String, Regex>;
+  public slots: Mapped<String, RegexNode>;
   public errors: ListBuilder<String>;
 
   /** The [slots] aren't copied, so do any parsing synchronously. */
-  public constructor(str: String, slots: Mapped<String, Regex> = new Map([])) {
+  public constructor(
+    str: String,
+    slots: Mapped<String, RegexNode> = new Map([]),
+  ) {
     chars = str.split("");
     pos = 0;
     this.slots = slots;
@@ -51,7 +54,7 @@ class Parser {
     matchChar("+") || matchChar("*") || matchChar("?")
   }
 
-  public charClassBody(): Regex | Bubble {
+  public charClassBody(): RegexNode | Bubble {
     let invert = matchChar("^");
     let opts = new ListBuilder<CodePart>();
     while (!matchChar("]")) {
@@ -69,7 +72,7 @@ class Parser {
     new CodeSet(opts.toList(), invert)
   }
 
-  public readPostfix(exist: Regex): Regex {
+  public readPostfix(exist: RegexNode): RegexNode {
     if (matchChar("+")) {
       new Repeat(exist, 1, null, matchChar("?"))
     } else if (matchChar("*")) {
@@ -81,7 +84,7 @@ class Parser {
     }
   }
 
-  public readSingle(): Regex | Bubble {
+  public readSingle(): RegexNode | Bubble {
     if (matchChar("[")) {
       charClassBody()
     } else if (matchChar("(")) {
@@ -188,8 +191,8 @@ class Parser {
     }
   }
 
-  public readSeq(): Regex | Bubble {
-    let seq = new ListBuilder<Regex>();
+  public readSeq(): RegexNode | Bubble {
+    let seq = new ListBuilder<RegexNode>();
     // Maintain a buffer for sequential code points.
     let codeBuffer = new ListBuilder<String>();
     let popCodeBuffer(): Void {
@@ -218,8 +221,8 @@ class Parser {
     }
   }
 
-  public readOr(): Regex | Bubble {
-    let ors = new ListBuilder<Regex>();
+  public readOr(): RegexNode | Bubble {
+    let ors = new ListBuilder<RegexNode>();
     while (!isDone() && peek() != ")") {
       if (ors.length != 0 && !matchChar("|")) {
         console.log(pos.toString());
