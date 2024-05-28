@@ -1,7 +1,7 @@
 # Temper Regex Parser
 
     export let name = "temper-regex-parser";
-    export let version = "0.2.0";
+    export let version = "0.3.0";
 
 ## Metadata
 
