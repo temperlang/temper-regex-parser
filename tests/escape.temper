@@ -31,8 +31,9 @@ test("escaped square brace") {
 }
 
 test("escape dash in square") {
-  let regex = compile(raw"[\-]");
-  regex.find("-");
+  compile(raw"[a\-c]").find("-") orelse assert(false) { "inside" };
+  compile(raw"[a-]").find("-") orelse assert(false) { "trailing" };
+  compile(raw"[-c]").find("-") orelse assert(false) { "leading" };
 }
 
 test("escaped curly braces") {
