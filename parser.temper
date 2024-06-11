@@ -64,6 +64,11 @@ class Parser {
       }
       let first = charClassUnit();
       if (matchChar("-")) {
+        if (matchChar("]")) {
+          // Exit on square bracket either way. Would need escaped.
+          opts.add(new CodePoints("-"));
+          break;
+        }
         let second = charClassUnit();
         opts.add(new CodeRange(extractCode(first), extractCode(second)));
       } else {
@@ -116,7 +121,7 @@ class Parser {
       matchChar("(") || matchChar(")")
       || matchChar("[") || matchChar("]")
       || matchChar("{") || matchChar("}")
-      || matchChar(".") || matchChar("\\")
+      || matchChar(".") || matchChar("\\") || matchChar("-")
       || matchRepeat()
     ) {
       new CodePoints(escapeCode)
