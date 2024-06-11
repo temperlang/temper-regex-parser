@@ -30,6 +30,11 @@ test("escaped square brace") {
   }
 }
 
+test("escape dash in square") {
+  let regex = compile(raw"[\-]");
+  regex.find("-");
+}
+
 test("escaped curly braces") {
   let regex = compile(raw":\}");
   let expected = ":}";

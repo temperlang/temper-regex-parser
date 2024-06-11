@@ -116,7 +116,7 @@ class Parser {
       matchChar("(") || matchChar(")")
       || matchChar("[") || matchChar("]")
       || matchChar("{") || matchChar("}")
-      || matchChar(".") || matchChar("\\")
+      || matchChar(".") || matchChar("\\") || matchChar("-")
       || matchRepeat()
     ) {
       new CodePoints(escapeCode)
