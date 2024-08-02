@@ -244,7 +244,7 @@ class Parser {
       }
     }
     // Loop through everything at this level.
-    while (!isDone() && peek() != "|" && peek() != ")") {
+    while (!isDone() && peek() != char"|" && peek() != char")") {
       let regex = readPostfix(readSingle());
       match (regex) {
         is CodePoints -> codeBuffer.add(regex.value);
@@ -264,7 +264,7 @@ class Parser {
 
   public readOr(): RegexNode | Bubble {
     let ors = new ListBuilder<RegexNode>();
-    while (!isDone() && peek() != ")") {
+    while (!isDone() && peek() != char")") {
       if (ors.length != 0 && !matchChar(char"|")) {
         console.log(chars.countBetween(String.start, pos).toString());
         error("or");
