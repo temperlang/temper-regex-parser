@@ -1,6 +1,8 @@
+let Char = Int;
+
 class Parser {
-  public chars: List<String>;
-  public var pos: Int;
+  public chars: String;
+  public var pos: StringIndex;
   public slots: Mapped<String, RegexNode>;
   public errors: ListBuilder<String>;
 
@@ -9,8 +11,8 @@ class Parser {
     str: String,
     slots: Mapped<String, RegexNode> = new Map([]),
   ) {
-    chars = str.split("");
-    pos = 0;
+    chars = str;
+    pos = String.start;
     this.slots = slots;
     errors = new ListBuilder<String>();
   }
@@ -21,28 +23,28 @@ class Parser {
   }
 
   public isDone(): Boolean {
-    chars.length <= pos
+    chars.end <= pos
   }
 
-  public peek(): String {
+  public peek(): Char {
     if (isDone()) {
       error("done");
-      return "";
+      return 0;
     }
-    chars[pos]
+    chars.codeAt(pos)
   }
 
   public advance(): Void {
-    pos += 1;
+    pos = chars.next(pos);
   }
 
-  public read(): String {
+  public read(): Char {
     let ret = peek();
     advance();
     ret
   }
 
-  public matchChar(s: String): Boolean {
+  public matchChar(s: Char): Boolean {
     if (peek() == s) {
       advance();
       true
@@ -52,19 +54,19 @@ class Parser {
   }
 
   matchRepeat(): Boolean {
-    matchChar("+") || matchChar("*") || matchChar("?")
+    matchChar(char"+") || matchChar(char"*") || matchChar(char"?")
   }
 
   public charClassBody(): RegexNode | Bubble {
-    let invert = matchChar("^");
+    let invert = matchChar(char"^");
     let opts = new ListBuilder<CodePart>();
-    while (!matchChar("]")) {
+    while (!matchChar(char"]")) {
       if (isDone()) {
         bubble()
       }
       let first = charClassUnit();
-      if (matchChar("-")) {
-        if (matchChar("]")) {
+      if (matchChar(char"-")) {
+        if (matchChar(char"]")) {
           // Exit on square bracket either way. Would need escaped.
           opts.add(new CodePoints("-"));
           break;
@@ -79,18 +81,18 @@ class Parser {
   }
 
   charClassUnit(): CodePart | Bubble {
-    if (matchChar("\\")) {
+    if (matchChar(char "\\")) {
       finishEscape().as<CodePart>() orelse do {
         error("invalid code part");
         bubble()
       }
     } else {
-      new CodePoints(read())
+      new CodePoints(String.fromCodePoint(read()))
     }
   }
 
   extractCode(codePart: CodePart): Int | Bubble {
-    codePart.as<CodePoints>().value.codePoints.read() orelse do {
+    codePart.as<CodePoints>().value.codeAt(String.start) orelse do {
       error("invalid range edge");
       bubble()
     }
@@ -98,135 +100,135 @@ class Parser {
 
   finishEscape(): RegexNode | Bubble {
     var escapeCode = peek();
-    if (matchChar("b")) {
+    if (matchChar(char"b")) {
       WordBoundary
-    } else if (matchChar("d")) {
+    } else if (matchChar(char"d")) {
       Digit
-    } else if (matchChar("n")) {
+    } else if (matchChar(char"n")) {
       new CodePoints("\n")
-    } else if (matchChar("r")) {
+    } else if (matchChar(char"r")) {
       new CodePoints("\r")
-    } else if (matchChar("s")) {
+    } else if (matchChar(char"s")) {
       Space
-    } else if (matchChar("t")) {
+    } else if (matchChar(char"t")) {
       new CodePoints("\t")
     // TODO Need more support in temper core for hex decoding.
-    // } else if (matchChar("u")) {
-    //   if (matchChar("{")) {
+    // } else if (matchChar(char"u")) {
+    //   if (matchChar(char"{")) {
     //     //
     //   }
-    } else if (matchChar("w")) {
+    } else if (matchChar(char"w")) {
       Word
     } else if (
-      matchChar("(") || matchChar(")")
-      || matchChar("[") || matchChar("]")
-      || matchChar("{") || matchChar("}")
-      || matchChar(".") || matchChar("\\") || matchChar("-")
+      matchChar(char"(") || matchChar(char")")
+      || matchChar(char"[") || matchChar(char"]")
+      || matchChar(char"{") || matchChar(char"}")
+      || matchChar(char".") || matchChar(char "\\") || matchChar(char"-")
       || matchRepeat()
     ) {
-      new CodePoints(escapeCode)
+      new CodePoints(String.fromCodePoint(escapeCode))
     } else {
-      error("unknown escape code: \\${peek()}");
+      error("unknown escape code: \\${String.fromCodePoint(peek())}");
       bubble()
     }
   }
 
   public readPostfix(exist: RegexNode): RegexNode {
-    if (matchChar("+")) {
-      new Repeat(exist, 1, null, matchChar("?"))
-    } else if (matchChar("*")) {
-      new Repeat(exist, 0, null, matchChar("?"))
-    } else if (matchChar("?")) {
-      new Repeat(exist, 0, 1, matchChar("?"))
+    if (matchChar(char"+")) {
+      new Repeat(exist, 1, null, matchChar(char"?"))
+    } else if (matchChar(char"*")) {
+      new Repeat(exist, 0, null, matchChar(char"?"))
+    } else if (matchChar(char"?")) {
+      new Repeat(exist, 0, 1, matchChar(char"?"))
     } else {
       exist
     }
   }
 
   public readSingle(): RegexNode | Bubble {
-    if (matchChar("[")) {
+    if (matchChar(char"[")) {
       charClassBody()
-    } else if (matchChar("(")) {
-      if (matchChar("?")) {
+    } else if (matchChar(char"(")) {
+      if (matchChar(char"?")) {
         // non capturing group
-        if (matchChar(":")) {
+        if (matchChar(char":")) {
           let regex = readOr();
-          if (!matchChar(")")) {
+          if (!matchChar(char")")) {
             error("closing paren");
             bubble();
           }
           regex
-        } else if (matchChar("$")) {
-          let parts = new ListBuilder<String>();
-          while (!matchChar(")")) {
+        } else if (matchChar(char"$")) {
+          let parts = new StringBuilder();
+          while (!matchChar(char")")) {
             if (isDone()) {
               error("missing closing paren in (?$...)");
               bubble();
             }
-            parts.add(read());
+            parts.appendCodePoint(read());
           }
-          let str = parts.join("", fn(s: String): String{s});
+          let str = parts.toString();
           slots[str] orelse do {
             error("no such slot: ${str}");
             bubble()
           }
-        } else if (matchChar("=")) {
+        } else if (matchChar(char"=")) {
           error("positive lookhead is not supported");
           bubble()
-        } else if (matchChar("<")) {
-          if (matchChar("=")) {
+        } else if (matchChar(char"<")) {
+          if (matchChar(char"=")) {
             error("positive lookbehind is not supported");
             bubble()
-          } else if (matchChar("!")) {
+          } else if (matchChar(char"!")) {
             error("negative lookbehind is not supported");
             bubble()
           } else {
-            error("unknown sequence (<${peek()}");
+            error("unknown sequence (<${String.fromCodePoint(peek())}");
             bubble()
           }
-        } else if (matchChar("!")) {
+        } else if (matchChar(char"!")) {
           error("negative lookahead is not supported");
           bubble()
         } else {
-          let str = new ListBuilder<String>();
-          while (matchChar(" ")) {}
-          while (!matchChar("=")) {
+          let str = new StringBuilder();
+          while (matchChar(char" ")) {}
+          while (!matchChar(char"=")) {
             if (isDone()) {
-              error("missing = in (?${str.join("", fn(s: String): String{s})}=...)");
+              error("missing = in (?${str.toString()}=...)");
               return bubble()
             }
-            str.add(read());
-            while (matchChar(" ")) {}
+            str.appendCodePoint(read());
+            while (matchChar(char" ")) {}
           }
           let regex = readOr();
-          if (!matchChar(")")) {
+          if (!matchChar(char")")) {
             error("closing paren");
             bubble();
           }
-          let name = str.join("", fn(s: String): String{s});
+          let name = str.toString();
           new Capture(name, regex)
         }
       } else {
         let regex = readOr();
-        if (!matchChar(")")) {
+        if (!matchChar(char")")) {
           error("closing paren");
           bubble();
         }
         regex
       }
-    } else if (matchChar("^")) {
+    } else if (matchChar(char"^")) {
       Begin
-    } else if (matchChar("$")) {
+    } else if (matchChar(char"$")) {
       End
-    } else if (matchChar(".")) {
+    } else if (matchChar(char".")) {
       Dot
-    } else if (matchChar("\\")) {
+    } else if (matchChar(char "\\")) {
       finishEscape()
     } else if (matchRepeat()) {
       error("invalid repeat");
       bubble()
     } else {
-      new CodePoints(read())
+      new CodePoints(String.fromCodePoint(read()))
     }
   }
 
@@ -236,13 +238,13 @@ class Parser {
     let codeBuffer = new ListBuilder<String>();
     let popCodeBuffer(): Void {
       if (!codeBuffer.isEmpty) {
+        // TODO If we add `clear` to StringBuilder, we can use that here.
         seq.add(new CodePoints(codeBuffer.join("") { (it);; it }));
-        // TODO Add `clear` method to ListBuilder for efficiency.
-        codeBuffer.splice(0);
+        codeBuffer.clear();
       }
     }
     // Loop through everything at this level.
-    while (!isDone() && peek() != "|" && peek() != ")") {
+    while (!isDone() && peek() != char"|" && peek() != char")") {
       let regex = readPostfix(readSingle());
       match (regex) {
         is CodePoints -> codeBuffer.add(regex.value);
@@ -262,9 +264,9 @@ class Parser {
 
   public readOr(): RegexNode | Bubble {
     let ors = new ListBuilder<RegexNode>();
-    while (!isDone() && peek() != ")") {
-      if (ors.length != 0 && !matchChar("|")) {
-        console.log(pos.toString());
+    while (!isDone() && peek() != char")") {
+      if (ors.length != 0 && !matchChar(char"|")) {
+        console.log(chars.countBetween(String.start, pos).toString());
         error("or");
         bubble();
       }
