@@ -23,6 +23,7 @@ test("code range") { (test);;
 }
 
 test("sub") { (test);;
+  let a: RegexNode = new CodePoints("a");
   let regex = compileWith(
     "(?$a-through-f)",
     new Map([
@@ -30,7 +31,7 @@ test("sub") { (test);;
         "(?$char-a)|(?$char-b)|(?$char-c)|(?$char-d)|(?$char-e)|(?$char-f)",
         new Map([
           // Make one explicit simple string just for demo.
-          new Pair("char-a", new CodePoints("a").as<RegexNode>()),
+          new Pair("char-a", a),
           new Pair("char-b", parseWith(
             "(?$char-b)",
             new Map([ new Pair("char-b", parse("b")) ]),
