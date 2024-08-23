@@ -12,7 +12,7 @@ class Parser {
     slots: Mapped<String, RegexNode> = new Map([]),
   ) {
     chars = str;
-    pos = String.start;
+    pos = String.begin;
     this.slots = slots;
     errors = new ListBuilder<String>();
   }
@@ -31,7 +31,7 @@ class Parser {
       error("done");
       return 0;
     }
-    chars.codeAt(pos)
+    chars[pos]
   }
 
   public advance(): Void {
@@ -92,7 +92,7 @@ class Parser {
   }
 
   extractCode(codePart: CodePart): Int | Bubble {
-    codePart.as<CodePoints>().value.codeAt(String.start) orelse do {
+    codePart.as<CodePoints>().value[String.begin] orelse do {
       error("invalid range edge");
       bubble()
     }
@@ -266,7 +266,7 @@ class Parser {
     let ors = new ListBuilder<RegexNode>();
     while (!isDone() && peek() != char")") {
       if (ors.length != 0 && !matchChar(char"|")) {
-        console.log(chars.countBetween(String.start, pos).toString());
+        console.log(chars.countBetween(String.begin, pos).toString());
         error("or");
         bubble();
       }
