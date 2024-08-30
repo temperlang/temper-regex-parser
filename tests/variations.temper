@@ -1,6 +1,6 @@
 let checkVariation(test: Test, re: Regex): Void | Bubble {
   let check(string: String, expected: String): Void {
-    assert(re.find(string)["full"].value == expected);
+    assert(re.find(string).full.value == expected);
   }
   check("all", expected = "a");
   check("beautify", expected = "b");

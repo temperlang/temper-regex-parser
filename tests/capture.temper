@@ -1,5 +1,5 @@
 test("capture") {
   let regex = compile("(?cent=\\d)(?tens=\\d)(?ones=\\d)");
-  let tens = regex.find("123")["tens"].value;
+  let tens = regex.find("123").groups["tens"].value;
   assert(tens == "2");
 }
