@@ -1,18 +1,10 @@
-let checkSub(test: Test, regex: Regex): Void {
-  let found = regex.find("Shaw Summa");
-  let check(name: String, expected: String): Void {
-    let value = found[name].value;
-    assert(value == expected);
-  }
-  check("full", expected = "Shaw Summa");
-  check("first", expected = "Shaw");
-  check("last", expected = "Summa");
-}
-
-test("sub") { (test);;
+test("sub") {
   let regex = compileWith(
     "(?first=(?$Word)) (?last=(?$Word))",
     new Map([ new Pair("Word", parse("\\b\\w+\\b")) ]),
   );
-  checkSub(test, regex);
+  let found = regex.find("Shaw Summa");
+  assert(found.full.value == "Shaw Summa");
+  assert(found.groups["first"].value == "Shaw");
+  assert(found.groups["last"].value == "Summa");
 }

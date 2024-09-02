@@ -1,14 +1,14 @@
 test("escaped dot") {
   let regex = compile(raw"\.\w+");
   let expected = ".net";
-  let id = regex.find("the ${expected} runtime")["full"].value;
+  let id = regex.find("the ${expected} runtime").full.value;
   assert(id == expected);
 }
 
 test("escaped parens") {
   let regex = compile(raw"\(?\d\d\d\)? (?mid=867) (?last=5309)");
   let expected = "(570) 867 5309";
-  let id = regex.find("the numbers 867 5309 are not actually used in any phone number due a *certain* song, like ${expected}")["full"].value;
+  let id = regex.find("the numbers 867 5309 are not actually used in any phone number due a *certain* song, like ${expected}").full.value;
   assert(id == expected);
 }
 
@@ -20,12 +20,12 @@ test("escaped square brace") {
   let regex = compile(raw"\[[yn]\]");
   do {
     let expected = "[y]";
-    let id = regex.find("continue (y/n): ${expected}")["full"].value;
+    let id = regex.find("continue (y/n): ${expected}").full.value;
     assert(id == expected);
   }
   do {
     let expected = "[n]";
-    let id = regex.find("use empty password: ${expected}")["full"].value;
+    let id = regex.find("use empty password: ${expected}").full.value;
     assert(id == expected);
   }
 }
@@ -39,14 +39,14 @@ test("escape dash in square") {
 test("escaped curly braces") {
   let regex = compile(raw":\}");
   let expected = ":}";
-  let id = regex.find("when i write temper i feel like smiling ${expected}")["full"].value;
+  let id = regex.find("when i write temper i feel like smiling ${expected}").full.value;
   assert(id == expected);
 }
 
 test("escaped backslash") {
   let regex = compile("\\\\");
   let expected = "\\";
-  let id = regex.find("playing dominoes... ||||${expected}")["full"].value;
+  let id = regex.find("playing dominoes... ||||${expected}").full.value;
   assert(id == expected);
 }
 
@@ -54,6 +54,6 @@ test("escaped whitespace") {
   // The idea here is that escapes in raw form need to match actual whitespace.
   let regex = compile(raw"\r\n\t[\r\n\t]");
   let expected = "\r\n\t\t";
-  let id = regex.find("something${expected}something")["full"].value;
+  let id = regex.find("something${expected}something").full.value;
   assert(id == expected);
 }
