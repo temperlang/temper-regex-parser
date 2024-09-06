@@ -246,7 +246,7 @@ class Parser {
     // Loop through everything at this level.
     while (!isDone() && peek() != char"|" && peek() != char")") {
       let regex = readPostfix(readSingle());
-      match (regex) {
+      when (regex) {
         is CodePoints -> codeBuffer.add(regex.value);
         else -> do {
           popCodeBuffer();
@@ -256,7 +256,7 @@ class Parser {
     }
     popCodeBuffer();
     // Finish result.
-    match (seq.length) {
+    when (seq.length) {
       1 -> seq[0];
       else -> new Sequence(seq.toList());
     }
@@ -273,7 +273,7 @@ class Parser {
       let regex = readSeq();
       ors.add(regex);
     }
-    match (ors.length) {
+    when (ors.length) {
       1 -> ors[0];
       else -> new Or(ors.toList());
     }
