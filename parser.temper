@@ -1,21 +1,11 @@
 let Char = Int;
 
-class Parser {
-  public chars: String;
-  public var pos: StringIndex;
-  public slots: Mapped<String, RegexNode>;
-  public errors: ListBuilder<String>;
-
-  /** The [slots] aren't copied, so do any parsing synchronously. */
-  public constructor(
-    str: String,
-    slots: Mapped<String, RegexNode> = new Map([]),
-  ) {
-    chars = str;
-    pos = String.begin;
-    this.slots = slots;
-    errors = new ListBuilder<String>();
-  }
+class Parser(
+  public chars: String,
+  public slots: Mapped<String, RegexNode> = new Map([]),
+) {
+  public var pos: StringIndex = String.begin;
+  public errors: ListBuilder<String> = new ListBuilder<String>();
 
   public error(e: String): Void {
     // TODO Track position also?
@@ -53,7 +43,7 @@ class Parser {
     }
   }
 
-  matchRepeat(): Boolean {
+  private matchRepeat(): Boolean {
     matchChar(char"+") || matchChar(char"*") || matchChar(char"?")
   }
 
@@ -80,7 +70,7 @@ class Parser {
     new CodeSet(opts.toList(), invert)
   }
 
-  charClassUnit(): CodePart | Bubble {
+  private charClassUnit(): CodePart | Bubble {
     if (matchChar(char "\\")) {
       finishEscape().as<CodePart>() orelse do {
         error("invalid code part");
@@ -91,14 +81,14 @@ class Parser {
     }
   }
 
-  extractCode(codePart: CodePart): Int | Bubble {
+  private extractCode(codePart: CodePart): Int | Bubble {
     codePart.as<CodePoints>().value[String.begin] orelse do {
       error("invalid range edge");
       bubble()
     }
   }
 
-  finishEscape(): RegexNode | Bubble {
+  private finishEscape(): RegexNode | Bubble {
     var escapeCode = peek();
     if (matchChar(char"b")) {
       WordBoundary
