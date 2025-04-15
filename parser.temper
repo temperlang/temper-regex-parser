@@ -9,7 +9,7 @@ class Parser(
 
   public error(e: String): Void {
     // TODO Track position also?
-    errors.add("${e}");
+    errors.add(e) orelse void;
   }
 
   public isDone(): Boolean {
@@ -21,7 +21,7 @@ class Parser(
       error("done");
       return 0;
     }
-    chars[pos]
+    chars[pos] orelse panic()
   }
 
   public advance(): Void {
@@ -226,7 +226,7 @@ class Parser(
     let seq = new ListBuilder<RegexNode>();
     // Maintain a buffer for sequential code points.
     let codeBuffer = new ListBuilder<String>();
-    let popCodeBuffer(): Void {
+    let popCodeBuffer(): Void | Bubble {
       if (!codeBuffer.isEmpty) {
         // TODO If we add `clear` to StringBuilder, we can use that here.
         seq.add(new CodePoints(codeBuffer.join("") { (it);; it }));
