@@ -2,12 +2,12 @@ let checkVariation(test: Test, re: Regex): Void | Bubble {
   let check(string: String, expected: String): Void | Bubble {
     assert(re.find(string).full.value == expected);
   }
-  check("all", expected = "a");
-  check("beautify", expected = "b");
-  check("can", expected = "c");
-  check("demonstrate", expected = "d");
-  check("regex", expected = "e");
-  check("functions", expected = "f");
+  check("all", "a");
+  check("beautify", "b");
+  check("can", "c");
+  check("demonstrate", "d");
+  check("regex", "e");
+  check("functions", "f");
 }
 
 test("code set") { (test);;
