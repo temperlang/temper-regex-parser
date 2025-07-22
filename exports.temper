@@ -1,5 +1,4 @@
 let { ... } = import("std/regex");
-let { StringBuilder } = import("std/strings");
 
 export let compileWith(
   src: String,
