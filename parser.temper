@@ -72,7 +72,7 @@ class Parser(
 
   private charClassUnit(): CodePart | Bubble {
     if (matchChar(char "\\")) {
-      finishEscape().as<CodePart>() orelse do {
+      finishEscape() as CodePart orelse do {
         error("invalid code part");
         bubble()
       }
@@ -82,7 +82,7 @@ class Parser(
   }
 
   private extractCode(codePart: CodePart): Int | Bubble {
-    codePart.as<CodePoints>().value[String.begin] orelse do {
+    (codePart as CodePoints).value[String.begin] orelse do {
       error("invalid range edge");
       bubble()
     }

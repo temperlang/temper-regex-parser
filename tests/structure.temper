@@ -13,10 +13,10 @@ test("restraint") {
 
 test("structure") {
   // Ensure we merge code points where possible and avoid excess nesting.
-  let codes = parse("abc").as<CodePoints>();
+  let codes = parse("abc") as CodePoints;
   assert(codes.value == "abc");
-  let seq = parse("abc.efg").as<Sequence>();
-  assert(seq.items[0].as<CodePoints>().value == "abc");
+  let seq = parse("abc.efg") as Sequence;
+  assert((seq.items[0] as CodePoints).value == "abc");
   assert(seq.items[1] == Dot) { "not dot" };
-  assert(seq.items[2].as<CodePoints>().value == "efg");
+  assert((seq.items[2] as CodePoints).value == "efg");
 }
