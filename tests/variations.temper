@@ -1,5 +1,5 @@
-let checkVariation(test: Test, re: Regex): Void | Bubble {
-  let check(string: String, expected: String): Void | Bubble {
+let checkVariation(test: Test, re: Regex): Void throws Bubble {
+  let check(string: String, expected: String): Void throws Bubble {
     assert(re.find(string).full.value == expected);
   }
   check("all", "a");
@@ -10,19 +10,19 @@ let checkVariation(test: Test, re: Regex): Void | Bubble {
   check("functions", "f");
 }
 
-test("code set") { (test);;
+test("code set") { test =>
   checkVariation(test, compile("[abcdef]"));
 }
 
-test("or") { (test);;
+test("or") { test =>
   checkVariation(test, compile("a|b|c|d|e|f"));
 }
 
-test("code range") { (test);;
+test("code range") { test =>
   checkVariation(test, compile("[a-f]"));
 }
 
-test("sub") { (test);;
+test("sub") { test =>
   let a: RegexNode = new CodePoints("a");
   let regex = compileWith(
     "(?$a-through-f)",

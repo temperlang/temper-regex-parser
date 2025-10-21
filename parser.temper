@@ -2,7 +2,9 @@ let Char = Int;
 
 class Parser(
   public chars: String,
-  public slots: Mapped<String, RegexNode> = new Map([]),
+  public slots: Mapped<String, RegexNode> =
+    // Ideally, this just says `new Map([])`.
+    new Map(List.of<Pair<String, RegexNode>>()),
 ) {
   public var pos: StringIndex = String.begin;
   public errors: ListBuilder<String> = new ListBuilder<String>();
@@ -47,7 +49,7 @@ class Parser(
     matchChar(char"+") || matchChar(char"*") || matchChar(char"?")
   }
 
-  public charClassBody(): RegexNode | Bubble {
+  public charClassBody(): RegexNode throws Bubble {
     let invert = matchChar(char"^");
     let opts = new ListBuilder<CodePart>();
     while (!matchChar(char"]")) {
@@ -70,7 +72,7 @@ class Parser(
     new CodeSet(opts.toList(), invert)
   }
 
-  private charClassUnit(): CodePart | Bubble {
+  private charClassUnit(): CodePart throws Bubble {
     if (matchChar(char "\\")) {
       finishEscape() as CodePart orelse do {
         error("invalid code part");
@@ -81,14 +83,14 @@ class Parser(
     }
   }
 
-  private extractCode(codePart: CodePart): Int | Bubble {
+  private extractCode(codePart: CodePart): Int throws Bubble {
     (codePart as CodePoints).value[String.begin] orelse do {
       error("invalid range edge");
       bubble()
     }
   }
 
-  private finishEscape(): RegexNode | Bubble {
+  private finishEscape(): RegexNode throws Bubble {
     var escapeCode = peek();
     if (matchChar(char"b")) {
       WordBoundary
@@ -135,7 +137,7 @@ class Parser(
     }
   }
 
-  public readSingle(): RegexNode | Bubble {
+  public readSingle(): RegexNode throws Bubble {
     if (matchChar(char"[")) {
       charClassBody()
     } else if (matchChar(char"(")) {
@@ -222,14 +224,14 @@ class Parser(
     }
   }
 
-  public readSeq(): RegexNode | Bubble {
+  public readSeq(): RegexNode throws Bubble {
     let seq = new ListBuilder<RegexNode>();
     // Maintain a buffer for sequential code points.
     let codeBuffer = new ListBuilder<String>();
-    let popCodeBuffer(): Void | Bubble {
+    let popCodeBuffer(): Void throws Bubble {
       if (!codeBuffer.isEmpty) {
         // TODO If we add `clear` to StringBuilder, we can use that here.
-        seq.add(new CodePoints(codeBuffer.join("") { (it);; it }));
+        seq.add(new CodePoints(codeBuffer.join("") { it => it }));
         codeBuffer.clear();
       }
     }
@@ -252,7 +254,7 @@ class Parser(
     }
   }
 
-  public readOr(): RegexNode | Bubble {
+  public readOr(): RegexNode throws Bubble {
     let ors = new ListBuilder<RegexNode>();
     while (!isDone() && peek() != char")") {
       if (ors.length != 0 && !matchChar(char"|")) {
