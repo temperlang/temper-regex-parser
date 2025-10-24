@@ -4,25 +4,25 @@ test("ok") {
   assert(hasResult { compile("ok"); });
 }
 
-test("unclosed capture") { (test);;
+test("unclosed capture") { test =>
   assertBubble(test) { compile("(unclosed"); }
 }
 
-test("unclosed code point group") { (test);;
+test("unclosed code point group") { test =>
   assertBubble(test) { compile("[group-unclosed"); }
 }
 
-test("unclosed named capture name") { (test);;
+test("unclosed named capture name") { test =>
   assertBubble(test) { compile("(?name"); }
   assertBubble(test) { compile("(?name="); }
   assertBubble(test) { compile("(?"); }
 }
 
-let assertBubble(test: Test, action: fn(): Void | Bubble): Void {
+let assertBubble(test: Test, action: fn(): Void throws Bubble): Void {
   assert(!hasResult(action));
 }
 
-let hasResult(action: fn(): Void | Bubble): Boolean {
+let hasResult(action: fn(): Void throws Bubble): Boolean {
   do {
     action();
     true
