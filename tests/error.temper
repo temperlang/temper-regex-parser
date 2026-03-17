@@ -18,6 +18,84 @@ test("unclosed named capture name") { test =>
   assertBubble(test) { compile("(?"); }
 }
 
+test("unmatched closing paren") { test =>
+  assertBubble(test) { compile("abc)def"); }
+  assertBubble(test) { compile(")"); }
+  assertBubble(test) { compile("a(b)c)d"); }
+}
+
+test("trailing backslash") { test =>
+  assertBubble(test) { compile("abc\\"); }
+  assertBubble(test) { compile("\\"); }
+}
+
+test("backreferences not supported") { test =>
+  assertBubble(test) { compile("(a)\\1"); }
+  assertBubble(test) { compile("\\2"); }
+  assertBubble(test) { compile("\\9"); }
+}
+
+test("non-word boundary not supported") { test =>
+  assertBubble(test) { compile("\\B"); }
+  assertBubble(test) { compile("\\Bword"); }
+}
+
+test("unicode property escapes not supported") { test =>
+  assertBubble(test) { compile(raw"\p{Letter}"); }
+  assertBubble(test) { compile(raw"\P{Digit}"); }
+}
+
+test("inline flag groups not supported") { test =>
+  assertBubble(test) { compile("(?i:hello)"); }
+  assertBubble(test) { compile("(?m:test)"); }
+  assertBubble(test) { compile("(?s:.)"); }
+}
+
+test("python named captures not supported") { test =>
+  assertBubble(test) { compile("(?P<name>pattern)"); }
+}
+
+test("standard named capture syntax not supported") { test =>
+  assertBubble(test) { compile("(?<name>pattern)"); }
+}
+
+test("quantifier min greater than max") { test =>
+  assertBubble(test) { compile("a{5,2}"); }
+  assertBubble(test) { compile("a{10,0}"); }
+}
+
+test("brace quantifiers work") {
+  // {n} exact
+  let r1 = compile("a{3}");
+  assert(r1.found("aaa"));
+  assert(!r1.found("aa"));
+  assert(r1.find("baaaab").full.value == "aaa");
+
+  // {n,m} range
+  let r2 = compile("a{2,4}");
+  assert(r2.found("aa"));
+  assert(r2.found("aaa"));
+  assert(r2.found("aaaa"));
+  assert(!r2.found("a"));
+
+  // {n,} unbounded
+  let r3 = compile("a{2,}");
+  assert(r3.found("aa"));
+  assert(r3.found("aaaaaaa"));
+  assert(!r3.found("a"));
+
+  // non-greedy
+  let r4 = compile("a{2,4}?");
+  let m = r4.find("aaaa").full.value;
+  assert(m == "aa");
+}
+
+test("brace literal fallback") {
+  // {abc} is not a quantifier — treated as literals
+  assert(hasResult { compile("{abc}"); });
+  assert(compile("{abc}").found("{abc}"));
+}
+
 let assertBubble(test: Test, action: fn(): Void throws Bubble): Void {
   assert(!hasResult(action));
 }

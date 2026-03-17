@@ -173,15 +173,26 @@ class Parser(
   }
 
   private finishEscape(): RegexNode throws Bubble {
+    if (isDone()) {
+      error("trailing '\\' at end of pattern");
+      bubble()
+    }
     var escapeCode = peek();
     if (matchChar(char"0")) {
       new CodePoints(String.fromCodePoint(0))
+    } else if (matchChar(char"a")) {
+      new CodePoints(String.fromCodePoint(7))   // bell
     } else if (matchChar(char"b")) {
       WordBoundary
+    } else if (matchChar(char"B")) {
+      error("\\B (non-word boundary) is not supported");
+      bubble()
     } else if (matchChar(char"d")) {
       Digit
     } else if (matchChar(char"D")) {
       new CodeSet([Digit], true)
+    } else if (matchChar(char"f")) {
+      new CodePoints(String.fromCodePoint(12))  // form feed
     } else if (matchChar(char"n")) {
       new CodePoints("\n")
     } else if (matchChar(char"r")) {
@@ -194,6 +205,8 @@ class Parser(
       new CodePoints("\t")
     } else if (matchChar(char"u")) {
       finishUnicodeEscape()
+    } else if (matchChar(char"v")) {
+      new CodePoints(String.fromCodePoint(11))  // vertical tab
     } else if (matchChar(char"w")) {
       Word
     } else if (matchChar(char"W")) {
@@ -210,8 +223,14 @@ class Parser(
       || matchRepeat()
     ) {
       new CodePoints(String.fromCodePoint(escapeCode))
+    } else if (peek() >= char"1" && peek() <= char"9") {
+      error("backreferences (\\${String.fromCodePoint(peek())}) are not supported");
+      bubble()
+    } else if (matchChar(char"p") || matchChar(char"P")) {
+      error("Unicode property escapes (\\p{...}) are not supported");
+      bubble()
     } else {
-      error("unknown escape code: \\${String.fromCodePoint(peek())}");
+      error("unknown escape sequence: \\${String.fromCodePoint(peek())}");
       bubble()
     }
   }
@@ -271,7 +290,7 @@ class Parser(
     true
   }
 
-  public readPostfix(exist: RegexNode): RegexNode {
+  public readPostfix(exist: RegexNode): RegexNode throws Bubble {
     if (matchChar(char"+")) {
       new Repeat(exist, 1, null, matchChar(char"?"))
     } else if (matchChar(char"*")) {
@@ -280,6 +299,10 @@ class Parser(
       new Repeat(exist, 0, 1, matchChar(char"?"))
     } else if (tryParseBraceQuantifier()) {
       let nonGreedy = matchChar(char"?");
+      if (braceMax != -1 && braceMin > braceMax) {
+        error("quantifier {${braceMin.toString()},${braceMax.toString()}} has min greater than max");
+        bubble()
+      }
       if (braceMax == -1) {
         new Repeat(exist, braceMin, null, nonGreedy)
       } else {
@@ -322,19 +345,38 @@ class Parser(
           bubble()
         } else if (matchChar(char"<")) {
           if (matchChar(char"=")) {
-            error("positive lookbehind is not supported");
+            error("positive lookbehind (?<=...) is not supported");
             bubble()
           } else if (matchChar(char"!")) {
-            error("negative lookbehind is not supported");
+            error("negative lookbehind (?<!...) is not supported");
             bubble()
           } else {
-            error("unknown sequence (<${String.fromCodePoint(peek())}");
+            error("(?<name>...) named capture syntax is not supported; use (?name=pattern) instead");
             bubble()
           }
         } else if (matchChar(char"!")) {
           error("negative lookahead is not supported");
           bubble()
         } else {
+          // Detect common unsupported syntax before named capture parsing
+          if (!isDone()) {
+            let checkPos = pos;
+            let fc = read();
+            if (!isDone()) {
+              if (peek() == char":") {
+                // (?X:...) — inline flag group
+                error("inline flag group (?${String.fromCodePoint(fc)}:...) is not supported");
+                bubble()
+              }
+              if (fc == char"P" && peek() == char"<") {
+                // (?P<name>...) — Python-style named capture
+                error("Python-style (?P<name>...) is not supported; use (?name=pattern) instead");
+                bubble()
+              }
+            }
+            pos = checkPos;
+          }
+          // Named capture: (?name=pattern)
           let str = new StringBuilder();
           while (matchChar(char" ")) {}
           while (!matchChar(char"=")) {
