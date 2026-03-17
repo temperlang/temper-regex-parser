@@ -57,3 +57,44 @@ test("escaped whitespace") {
   let id = regex.find("something${expected}something").full.value;
   assert(id == expected);
 }
+
+test("unicode escape 4 digit") {
+  // \u0041 is 'A'
+  let regex = compile(raw"\u0041+");
+  assert(regex.found("AAA"));
+  assert(!regex.found("bbb"));
+  let id = regex.find("hello AAA world").full.value;
+  assert(id == "AAA");
+}
+
+test("unicode escape braced") {
+  // \u{41} is 'A'
+  let regex = compile(raw"\u{41}+");
+  assert(regex.found("AAA"));
+  assert(!regex.found("bbb"));
+  let id = regex.find("hello AAA world").full.value;
+  assert(id == "AAA");
+}
+
+test("unicode escape braced multidigit") {
+  // \u{1F600} is the grinning face emoji
+  let regex = compile(raw"\u{1F600}");
+  let text = String.fromCodePoint(0x1F600);
+  assert(regex.found(text));
+}
+
+test("unicode escape in char class") {
+  // \u0041 is 'A', \u005A is 'Z'
+  let regex = compile(raw"[\u0041-\u005A]+");
+  assert(regex.found("HELLO"));
+  assert(!regex.found("hello"));
+  let id = regex.find("abc HELLO def").full.value;
+  assert(id == "HELLO");
+}
+
+test("unicode escape mixed") {
+  // Mix unicode escapes with regular characters
+  let regex = compile(raw"\u0048ello");
+  assert(regex.found("Hello"));
+  assert(!regex.found("hello"));
+}

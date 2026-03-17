@@ -1,3 +1,4 @@
+// Char is an alias for Int since characters are represented as Unicode code points
 let Char = Int;
 
 class Parser(
@@ -10,8 +11,8 @@ class Parser(
   public errors: ListBuilder<String> = new ListBuilder<String>();
 
   public error(e: String): Void {
-    // TODO Track position also?
-    errors.add(e) orelse void;
+    let position = chars.countBetween(String.begin, pos);
+    errors.add("at position ${position.toString()}: ${e}") orelse void;
   }
 
   public isDone(): Boolean {
@@ -49,6 +50,65 @@ class Parser(
     matchChar(char"+") || matchChar(char"*") || matchChar(char"?")
   }
 
+  private isHexDigit(c: Char): Boolean {
+    (c >= char"0" && c <= char"9")
+      || (c >= char"a" && c <= char"f")
+      || (c >= char"A" && c <= char"F")
+  }
+
+  private hexValue(c: Char): Int throws Bubble {
+    if (c >= char"0" && c <= char"9") {
+      c - char"0"
+    } else if (c >= char"a" && c <= char"f") {
+      c - char"a" + 10
+    } else if (c >= char"A" && c <= char"F") {
+      c - char"A" + 10
+    } else {
+      bubble()
+    }
+  }
+
+  // Parse a Unicode escape: \uXXXX (4 hex digits) or \u{X...} (1-6 hex digits)
+  private finishUnicodeEscape(): RegexNode throws Bubble {
+    if (matchChar(char"{")) {
+      // Braced form: \u{X} to \u{XXXXXX}
+      var codePoint = 0;
+      var count = 0;
+      while (!matchChar(char"}")) {
+        if (isDone() || count >= 6) {
+          error("invalid unicode escape");
+          bubble()
+        }
+        let c = read();
+        codePoint = codePoint * 16 + (hexValue(c) orelse do {
+          error("invalid hex digit in unicode escape");
+          bubble()
+        });
+        count = count + 1;
+      }
+      if (count == 0) {
+        error("empty unicode escape");
+        bubble()
+      }
+      new CodePoints(String.fromCodePoint(codePoint))
+    } else {
+      // Fixed form: \uXXXX (exactly 4 hex digits)
+      var codePoint = 0;
+      for (var i = 0; i < 4; ++i) {
+        if (isDone()) {
+          error("incomplete unicode escape");
+          bubble()
+        }
+        let c = read();
+        codePoint = codePoint * 16 + (hexValue(c) orelse do {
+          error("invalid hex digit in unicode escape");
+          bubble()
+        });
+      }
+      new CodePoints(String.fromCodePoint(codePoint))
+    }
+  }
+
   public charClassBody(): RegexNode throws Bubble {
     let invert = matchChar(char"^");
     let opts = new ListBuilder<CodePart>();
@@ -74,9 +134,14 @@ class Parser(
 
   private charClassUnit(): CodePart throws Bubble {
     if (matchChar(char "\\")) {
-      finishEscape() as CodePart orelse do {
-        error("invalid code part");
-        bubble()
+      // \b inside a character class means backspace (U+0008), not word boundary
+      if (matchChar(char"b")) {
+        new CodePoints(String.fromCodePoint(8))
+      } else {
+        finishEscape() as CodePart orelse do {
+          error("invalid code part");
+          bubble()
+        }
       }
     } else {
       new CodePoints(String.fromCodePoint(read()))
@@ -90,32 +155,58 @@ class Parser(
     }
   }
 
+  // Parse a hex escape: \xNN (exactly 2 hex digits)
+  private finishHexEscape(): RegexNode throws Bubble {
+    var codePoint = 0;
+    for (var i = 0; i < 2; ++i) {
+      if (isDone()) {
+        error("incomplete hex escape");
+        bubble()
+      }
+      let c = read();
+      codePoint = codePoint * 16 + (hexValue(c) orelse do {
+        error("invalid hex digit in hex escape");
+        bubble()
+      });
+    }
+    new CodePoints(String.fromCodePoint(codePoint))
+  }
+
   private finishEscape(): RegexNode throws Bubble {
     var escapeCode = peek();
-    if (matchChar(char"b")) {
+    if (matchChar(char"0")) {
+      new CodePoints(String.fromCodePoint(0))
+    } else if (matchChar(char"b")) {
       WordBoundary
     } else if (matchChar(char"d")) {
       Digit
+    } else if (matchChar(char"D")) {
+      new CodeSet([Digit], true)
     } else if (matchChar(char"n")) {
       new CodePoints("\n")
     } else if (matchChar(char"r")) {
       new CodePoints("\r")
     } else if (matchChar(char"s")) {
       Space
+    } else if (matchChar(char"S")) {
+      new CodeSet([Space], true)
     } else if (matchChar(char"t")) {
       new CodePoints("\t")
-    // TODO Need more support in temper core for hex decoding.
-    // } else if (matchChar(char"u")) {
-    //   if (matchChar(char"{")) {
-    //     //
-    //   }
+    } else if (matchChar(char"u")) {
+      finishUnicodeEscape()
     } else if (matchChar(char"w")) {
       Word
+    } else if (matchChar(char"W")) {
+      new CodeSet([Word], true)
+    } else if (matchChar(char"x")) {
+      finishHexEscape()
     } else if (
       matchChar(char"(") || matchChar(char")")
       || matchChar(char"[") || matchChar(char"]")
       || matchChar(char"{") || matchChar(char"}")
       || matchChar(char".") || matchChar(char "\\") || matchChar(char"-")
+      || matchChar(char"/") || matchChar(char"^") || matchChar(char"$")
+      || matchChar(char"|")
       || matchRepeat()
     ) {
       new CodePoints(String.fromCodePoint(escapeCode))
@@ -125,6 +216,61 @@ class Parser(
     }
   }
 
+  // Scratch space for brace quantifier parsing
+  public var braceMin: Int = 0;
+  // -1 means unbounded, -2 means "not a quantifier"
+  public var braceMax: Int = 0;
+
+  // Try to parse a {n}, {n,}, or {n,m} quantifier.
+  // Sets braceMin/braceMax and returns true on success.
+  // Returns false and backtracks if not a valid quantifier.
+  private tryParseBraceQuantifier(): Boolean {
+    let savedPos = pos;
+    if (!matchChar(char"{")) {
+      return false;
+    }
+    // Parse min value directly as integer
+    var min = 0;
+    var minDigits = 0;
+    while (!isDone() && peek() >= char"0" && peek() <= char"9") {
+      min = min * 10 + (read() - char"0");
+      minDigits = minDigits + 1;
+    }
+    if (minDigits == 0) {
+      pos = savedPos;
+      return false;
+    }
+    if (matchChar(char"}")) {
+      // {n} — exact count
+      braceMin = min;
+      braceMax = min;
+      return true;
+    }
+    if (!matchChar(char",")) {
+      pos = savedPos;
+      return false;
+    }
+    // Parse optional max value
+    var max = 0;
+    var maxDigits = 0;
+    while (!isDone() && peek() >= char"0" && peek() <= char"9") {
+      max = max * 10 + (read() - char"0");
+      maxDigits = maxDigits + 1;
+    }
+    if (!matchChar(char"}")) {
+      pos = savedPos;
+      return false;
+    }
+    braceMin = min;
+    if (maxDigits == 0) {
+      // {n,} — unbounded
+      braceMax = -1;
+    } else {
+      braceMax = max;
+    }
+    true
+  }
+
   public readPostfix(exist: RegexNode): RegexNode {
     if (matchChar(char"+")) {
       new Repeat(exist, 1, null, matchChar(char"?"))
@@ -132,6 +278,13 @@ class Parser(
       new Repeat(exist, 0, null, matchChar(char"?"))
     } else if (matchChar(char"?")) {
       new Repeat(exist, 0, 1, matchChar(char"?"))
+    } else if (tryParseBraceQuantifier()) {
+      let nonGreedy = matchChar(char"?");
+      if (braceMax == -1) {
+        new Repeat(exist, braceMin, null, nonGreedy)
+      } else {
+        new Repeat(exist, braceMin, braceMax, nonGreedy)
+      }
     } else {
       exist
     }
@@ -258,7 +411,6 @@ class Parser(
     let ors = new ListBuilder<RegexNode>();
     while (!isDone() && peek() != char")") {
       if (ors.length != 0 && !matchChar(char"|")) {
-        console.log(chars.countBetween(String.begin, pos).toString());
         error("or");
         bubble();
       }

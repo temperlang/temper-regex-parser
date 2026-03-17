@@ -1,0 +1,53 @@
+// Tests for anchor patterns (^ and $)
+
+test("begin anchor") {
+  let regex = compile("^hello");
+  assert(regex.found("hello world"));
+  assert(regex.found("hello"));
+  assert(!regex.found("say hello"));
+  assert(!regex.found(" hello"));
+}
+
+test("end anchor") {
+  let regex = compile("world$");
+  assert(regex.found("hello world"));
+  assert(regex.found("world"));
+  assert(!regex.found("world peace"));
+  assert(!regex.found("world "));
+}
+
+test("both anchors") {
+  let regex = compile("^exact$");
+  assert(regex.found("exact"));
+  assert(!regex.found("exact match"));
+  assert(!regex.found("not exact"));
+  assert(!regex.found(" exact "));
+}
+
+test("anchor with pattern") {
+  let regex = compile("^\\d\\d\\d$");
+  assert(regex.found("123"));
+  assert(!regex.found("12"));
+  assert(!regex.found("1234"));
+  assert(!regex.found("a123"));
+  assert(!regex.found("123b"));
+}
+
+test("dot any character") {
+  let regex = compile("a.c");
+  assert(regex.found("abc"));
+  assert(regex.found("axc"));
+  assert(regex.found("a c"));
+  assert(!regex.found("ac"));
+  let match = regex.find("1a2c3").full.value;
+  assert(match == "a2c");
+}
+
+test("dot with quantifier") {
+  let regex = compile("a.+b");
+  assert(regex.found("axb"));
+  assert(regex.found("axxxb"));
+  assert(!regex.found("ab"));
+  let match = regex.find("xxa123bxx").full.value;
+  assert(match == "a123b");
+}

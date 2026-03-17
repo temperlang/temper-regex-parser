@@ -1,0 +1,64 @@
+// Tests for greedy vs non-greedy quantifiers
+
+test("greedy plus") {
+  let regex = compile("a+");
+  let match = regex.find("aaabbb").full.value;
+  assert(match == "aaa");
+}
+
+test("non-greedy plus") {
+  let regex = compile("a+?");
+  let match = regex.find("aaabbb").full.value;
+  assert(match == "a");
+}
+
+test("greedy star") {
+  let regex = compile("a*b");
+  let match = regex.find("aaab").full.value;
+  assert(match == "aaab");
+}
+
+test("non-greedy star") {
+  let regex = compile("a*?b");
+  let match = regex.find("aaab").full.value;
+  assert(match == "aaab"); // Still matches, but minimal
+}
+
+test("greedy optional") {
+  let regex = compile("ab?c");
+  assert(regex.found("abc"));
+  assert(regex.found("ac"));
+}
+
+test("non-greedy optional") {
+  let regex = compile("ab??c");
+  assert(regex.found("abc"));
+  assert(regex.found("ac"));
+}
+
+test("greedy in alternation") {
+  // Greedy should consume as much as possible
+  let regex = compile("(?content=.+)end");
+  let match = regex.find("startmiddleend").full.value;
+  assert(match == "startmiddleend");
+  let content = match;
+}
+
+test("non-greedy in alternation") {
+  // Non-greedy should consume as little as possible
+  let regex = compile("start(?content=.+?)end");
+  let match = regex.find("startAendstartBend").full.value;
+  assert(match == "startAend");
+  let groups = regex.find("startXYZend").groups;
+  let content = groups["content"].value;
+  assert(content == "XYZ");
+}
+
+test("multiple quantifiers") {
+  let regex = compile("a+b*c?");
+  assert(regex.found("a"));
+  assert(regex.found("ab"));
+  assert(regex.found("abc"));
+  assert(regex.found("aaa"));
+  assert(regex.found("aaabbbccc"));
+}
