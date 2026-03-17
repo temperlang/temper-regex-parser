@@ -1,0 +1,67 @@
+// Tests for character class escapes and related features
+
+test("digit escape") {
+  let regex = compile("\\d+");
+  assert(regex.found("123"));
+  assert(regex.found("0"));
+  assert(!regex.found("abc"));
+  let id = regex.find("abc123def").full.value;
+  assert(id == "123");
+}
+
+test("word escape") {
+  let regex = compile("\\w+");
+  assert(regex.found("hello"));
+  assert(regex.found("test_123"));
+  assert(regex.found("_underscore"));
+  assert(!regex.found("!!!"));
+  let id = regex.find("hello world").full.value;
+  assert(id == "hello");
+}
+
+test("space escape") {
+  let regex = compile("\\s+");
+  assert(regex.found(" "));
+  assert(regex.found("  "));
+  assert(regex.found("\t"));
+  assert(regex.found("\n"));
+  assert(!regex.found("abc"));
+  let spaces = regex.find("hello   world").full.value;
+  assert(spaces == "   ");
+}
+
+test("word boundary") {
+  let regex = compile("\\btest\\b");
+  assert(regex.found("test"));
+  assert(regex.found("a test b"));
+  assert(regex.found("test "));
+  assert(regex.found(" test"));
+  assert(!regex.found("testing"));
+  assert(!regex.found("attest"));
+  assert(!regex.found("protest"));
+}
+
+test("inverted character class") {
+  let regex = compile("[^abc]+");
+  assert(regex.found("def"));
+  assert(regex.found("xyz"));
+  assert(!regex.found("abc"));
+  let id = regex.find("aaxyzbb").full.value;
+  assert(id == "xyz");
+}
+
+test("inverted with range") {
+  let regex = compile("[^0-9]+");
+  assert(regex.found("hello"));
+  assert(!regex.found("123"));
+  let letters = regex.find("123abc456").full.value;
+  assert(letters == "abc");
+}
+
+test("combined character classes") {
+  let regex = compile("[a-z\\d]+");
+  assert(regex.found("abc123"));
+  assert(regex.found("test"));
+  assert(regex.found("456"));
+  assert(!regex.found("ABC"));
+}

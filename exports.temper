@@ -15,9 +15,21 @@ export let parseWith(
   src: String,
   slots: Mapped<String, RegexNode>,
 ): RegexNode throws Bubble {
-  new Parser(src, slots).readOr()
+  let parser = new Parser(src, slots);
+  let result = parser.readOr();
+  if (!parser.isDone()) {
+    parser.error("unexpected ')'; unmatched closing parenthesis");
+    bubble()
+  }
+  result
 }
 
 export let parse(src: String): RegexNode throws Bubble {
-  new Parser(src).readOr()
+  let parser = new Parser(src);
+  let result = parser.readOr();
+  if (!parser.isDone()) {
+    parser.error("unexpected ')'; unmatched closing parenthesis");
+    bubble()
+  }
+  result
 }

@@ -1,0 +1,54 @@
+// Tests for non-capturing groups and group behavior
+
+test("non-capturing group") {
+  let regex = compile("(?:\\d+)");
+  assert(regex.found("123"));
+  assert(regex.found("456"));
+  let match = regex.find("abc123def").full.value;
+  assert(match == "123");
+}
+
+test("non-capturing with alternation") {
+  let regex = compile("(?:cat|dog)");
+  assert(regex.found("cat"));
+  assert(regex.found("dog"));
+  assert(!regex.found("bird"));
+  let match1 = regex.find("I have a cat").full.value;
+  assert(match1 == "cat");
+  let match2 = regex.find("I have a dog").full.value;
+  assert(match2 == "dog");
+}
+
+test("non-capturing with quantifier") {
+  let regex = compile("(?:ab)+");
+  assert(regex.found("ab"));
+  assert(regex.found("abab"));
+  assert(regex.found("ababab"));
+  assert(!regex.found("a"));
+  assert(!regex.found("b"));
+  let match = regex.find("xabababx").full.value;
+  assert(match == "ababab");
+}
+
+test("named capture vs non-capturing") {
+  let regex = compile("(?:pre)(?name=\\w+)(?:post)");
+  let match = regex.find("preTESTpost");
+  assert(match.full.value == "preTESTpost");
+  let name = match.groups["name"].value;
+  assert(name == "TEST");
+}
+
+test("nested non-capturing") {
+  let regex = compile("(?:a(?:b(?:c)))");
+  assert(regex.found("abc"));
+  assert(!regex.found("ab"));
+  assert(!regex.found("bc"));
+}
+
+test("mixed capturing") {
+  let regex = compile("(?first=\\w+)(?:\\s+)(?last=\\w+)");
+  let match = regex.find("John   Doe");
+  assert(match.full.value == "John   Doe");
+  assert(match.groups["first"].value == "John");
+  assert(match.groups["last"].value == "Doe");
+}

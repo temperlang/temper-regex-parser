@@ -57,3 +57,112 @@ test("escaped whitespace") {
   let id = regex.find("something${expected}something").full.value;
   assert(id == expected);
 }
+
+test("unicode escape 4 digit") {
+  // \u0041 is 'A'
+  let regex = compile(raw"\u0041+");
+  assert(regex.found("AAA"));
+  assert(!regex.found("bbb"));
+  let id = regex.find("hello AAA world").full.value;
+  assert(id == "AAA");
+}
+
+test("unicode escape braced") {
+  // \u{41} is 'A'
+  let regex = compile(raw"\u{41}+");
+  assert(regex.found("AAA"));
+  assert(!regex.found("bbb"));
+  let id = regex.find("hello AAA world").full.value;
+  assert(id == "AAA");
+}
+
+test("unicode escape braced multidigit") {
+  // \u{1F600} is the grinning face emoji
+  let regex = compile(raw"\u{1F600}");
+  let text = String.fromCodePoint(0x1F600);
+  assert(regex.found(text));
+}
+
+test("unicode escape in char class") {
+  // \u0041 is 'A', \u005A is 'Z'
+  let regex = compile(raw"[\u0041-\u005A]+");
+  assert(regex.found("HELLO"));
+  assert(!regex.found("hello"));
+  let id = regex.find("abc HELLO def").full.value;
+  assert(id == "HELLO");
+}
+
+test("unicode escape mixed") {
+  // Mix unicode escapes with regular characters
+  let regex = compile(raw"\u0048ello");
+  assert(regex.found("Hello"));
+  assert(!regex.found("hello"));
+}
+
+test("hex escape") {
+  // \x41 is 'A'
+  let regex = compile(raw"\x41+");
+  assert(regex.found("AAA"));
+  assert(!regex.found("bbb"));
+  let id = regex.find("hello AAA world").full.value;
+  assert(id == "AAA");
+}
+
+test("null escape") {
+  // \0 is null character (U+0000)
+  let regex = compile(raw"\0");
+  let text = String.fromCodePoint(0);
+  assert(regex.found(text));
+}
+
+test("bell escape") {
+  // \a is bell (U+0007)
+  let regex = compile(raw"\a");
+  let text = String.fromCodePoint(7);
+  assert(regex.found(text));
+}
+
+test("form feed escape") {
+  // \f is form feed (U+000C)
+  let regex = compile(raw"\f");
+  let text = String.fromCodePoint(12);
+  assert(regex.found(text));
+}
+
+test("vertical tab escape") {
+  // \v is vertical tab (U+000B)
+  let regex = compile(raw"\v");
+  let text = String.fromCodePoint(11);
+  assert(regex.found(text));
+}
+
+test("escaped forward slash") {
+  let regex = compile(raw"https:\/\/");
+  assert(regex.found("https://example.com"));
+}
+
+test("negated shorthand classes") {
+  // \D matches non-digits
+  let r1 = compile(raw"\D+");
+  assert(r1.found("abc"));
+  assert(!r1.found("123"));
+  assert(r1.find("123abc456").full.value == "abc");
+
+  // \W matches non-word characters
+  let r2 = compile(raw"\W+");
+  assert(r2.found("!@#"));
+  assert(!r2.found("abc"));
+
+  // \S matches non-whitespace
+  let r3 = compile(raw"\S+");
+  assert(r3.found("hello"));
+  assert(!r3.found("   "));
+  assert(r3.find("  hello  ").full.value == "hello");
+}
+
+test("backspace in character class") {
+  // [\b] inside a character class means backspace (U+0008), not word boundary
+  let regex = compile(raw"[\b]");
+  let text = String.fromCodePoint(8);
+  assert(regex.found(text));
+}
