@@ -99,6 +99,42 @@ test("unicode escape mixed") {
   assert(!regex.found("hello"));
 }
 
+test("unicode escape surrogate pair") {
+  // U+1F600, the grinning face emoji, written as its UTF-16 surrogate pair
+  let regex = compile("\\u${"D83D"}\\u${"DE00"}");
+  assert(regex.found(String.fromCodePoint(0x1F600)));
+}
+
+test("escaped punctuation") {
+  assert(compile(raw"\&\~\#\,\:\=\!\<\>\'\`").found("&~#,:=!<>'`"));
+}
+
+test("anchor escapes") {
+  let regex = compile(raw"\A\d\z");
+  assert(regex.found("5"));
+  assert(!regex.found("55"));
+}
+
+test("control escapes") {
+  assert(compile(raw"\e").found(String.fromCodePoint(0x1B)));
+  assert(compile(raw"\cJ").found("\n"));
+  assert(compile(raw"\cj").found("\n"));
+}
+
+test("bad control escape") { test =>
+  assertBubble(test) { compile(raw"\c1"); }
+  assertBubble(test) { compile(raw"\c"); }
+}
+
+test("anchor escapes not allowed in class") { test =>
+  assertBubble(test) { compile(raw"[\A]"); }
+  assertBubble(test) { compile(raw"[\z]"); }
+}
+
+test("escaped space") {
+  assert(compile(raw"a\ b").found("a b"));
+}
+
 test("hex escape") {
   // \x41 is 'A'
   let regex = compile(raw"\x41+");

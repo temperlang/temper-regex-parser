@@ -20,3 +20,13 @@ test("structure") {
   assert(seq.items[1] is Special) { "not dot" };
   assert((seq.items[2] as CodePoints).value == "efg");
 }
+
+test("flattening") {
+  // One-member classes are their member, and merge with the text around them.
+  assert((parse("a[b]c") as CodePoints).value == "abc");
+  // Groups don't nest sequences or alternations inside the same kind.
+  let seq = parse("a(?:b.)c") as Sequence;
+  assert(seq.items.length == 3);
+  assert((seq.items[0] as CodePoints).value == "ab");
+  assert((parse("(?:a|b)|c") as Or).items.length == 3);
+}

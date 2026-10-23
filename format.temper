@@ -1,0 +1,157 @@
+// Writes RegexNode trees back out as pattern text in this library's dialect.
+
+let isMeta(c: Char): Boolean {
+  hasCode("\\^$.|?*+()[]{}", c)
+}
+
+// Appends a code point so that it parses back as itself, in a character class
+// or out of one.
+let appendCode(out: StringBuilder, code: Int, inClass: Boolean): Void throws Bubble {
+  when (code) {
+    0x9 -> out.append("\\t");
+    0xA -> out.append("\\n");
+    0xB -> out.append("\\v");
+    0xC -> out.append("\\f");
+    0xD -> out.append("\\r");
+    else -> if (code < 0x20 || code == 0x7F) {
+      out.append("\\u{${code.toString(16)}}");
+    } else {
+      if (isMeta(code) || (inClass && code == char"-")) {
+        out.append("\\");
+      }
+      out.appendCodePoint(code);
+    }
+  }
+}
+
+// std/regex doesn't say which special a node is, and Temper can't compare
+// objects for identity, so this tells them apart by what they match. Each
+// check compiles a small regex.
+let specialText(special: Special): String {
+  if (special is SpecialSet) {
+    if (!special.found("5")) {
+      "\\s"
+    } else if (special.found("a")) {
+      "\\w"
+    } else {
+      "\\d"
+    }
+  } else if (do { special.find("a").full.value == "a" } orelse false) {
+    "."
+  } else {
+    let afterText = new Sequence(List.of<RegexNode>(new CodePoints("a"), special)).found("a");
+    let beforeText = new Sequence(List.of<RegexNode>(special, new CodePoints("a"))).found("a");
+    if (afterText && beforeText) {
+      "\\b"
+    } else if (beforeText) {
+      "^"
+    } else {
+      "$"
+    }
+  }
+}
+
+let formatSet(out: StringBuilder, set: CodeSet): Void throws Bubble {
+  if (set.negated && set.items.length == 1 && set.items[0] is SpecialSet) {
+    // [^\d] is \D.
+    out.append(when (specialText(set.items[0] as SpecialSet)) {
+      "\\d" -> "\\D";
+      "\\s" -> "\\S";
+      else -> "\\W";
+    });
+    return;
+  }
+  out.append(if (set.negated) { "[^" } else { "[" });
+  for (let item of set.items) {
+    when (item) {
+      is CodePoints -> do {
+        for (let c of item.value) {
+          appendCode(out, c, true);
+        }
+      }
+      is CodeRange -> do {
+        appendCode(out, item.min, true);
+        out.append("-");
+        appendCode(out, item.max, true);
+      }
+      is SpecialSet -> out.append(specialText(item));
+      else -> bubble();
+    }
+  }
+  out.append("]");
+}
+
+// Whether a node needs (?:...) around it before a quantifier.
+let needsGroupToRepeat(node: RegexNode): Boolean {
+  when (node) {
+    is CodePoints -> !node.value.hasAtLeast(String.begin, node.value.end, 1)
+      || node.value.hasAtLeast(String.begin, node.value.end, 2);
+    is Sequence, is Or, is Repeat -> true;
+    else -> false;
+  }
+}
+
+let formatGrouped(out: StringBuilder, node: RegexNode, grouped: Boolean): Void throws Bubble {
+  if (grouped) {
+    out.append("(?:");
+    formatTo(out, node);
+    out.append(")");
+  } else {
+    formatTo(out, node);
+  }
+}
+
+let formatTo(out: StringBuilder, node: RegexNode): Void throws Bubble {
+  when (node) {
+    is CodePoints -> do {
+      for (let c of node.value) {
+        appendCode(out, c, false);
+      }
+    }
+    is CodeRange -> do {
+      out.append("[");
+      appendCode(out, node.min, true);
+      out.append("-");
+      appendCode(out, node.max, true);
+      out.append("]");
+    }
+    is CodeSet -> formatSet(out, node);
+    is Or -> do {
+      var separator = "";
+      for (let item of node.items) {
+        out.append(separator);
+        separator = "|";
+        formatTo(out, item);
+      }
+    }
+    is Sequence -> do {
+      for (let item of node.items) {
+        formatGrouped(out, item, item is Or);
+      }
+    }
+    is Repeat -> do {
+      formatGrouped(out, node.item, needsGroupToRepeat(node.item));
+      let min = node.min;
+      let max = node.max;
+      if (max == null) {
+        out.append(if (min == 0) { "*" } else if (min == 1) { "+" } else { "{${min},}" });
+      } else if (min == 0 && max == 1) {
+        out.append("?");
+      } else if (min == max) {
+        out.append("{${min}}");
+      } else {
+        out.append("{${min},${max}}");
+      }
+      if (node.reluctant) {
+        out.append("?");
+      }
+    }
+    is Capture -> do {
+      out.append("(?${node.name}=");
+      formatTo(out, node.item);
+      out.append(")");
+    }
+    is Special -> out.append(specialText(node));
+    else -> bubble();
+  }
+}

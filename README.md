@@ -4,23 +4,25 @@ A regular expression parser for the Temper programming language that converts re
 
 ## Overview
 
-This library parses regex pattern syntax and builds structured `RegexNode` objects that can be compiled into executable `Regex` instances. It extends the standard regex syntax with additional features like named captures, pattern slots, and case-insensitive groups.
+This library parses regex pattern syntax and builds structured `RegexNode` objects that can be compiled into executable `Regex` instances. It extends the standard regex syntax with additional features like named captures and pattern slots.
 
 ## Features
 
 ### Standard Regex Syntax
 - **Character classes**: `[abc]`, `[^xyz]`, `[a-z]`
-- **Escape sequences**: `\d`, `\w`, `\s`, `\n`, `\t`, `\\`, `\/`
+- **Escape sequences**: `\d`, `\w`, `\s`, `\n`, `\t`, `\\`, `\/`, `\e` (escape), `\cX` (control character), and `\` before any ASCII punctuation or a space
 - **Repetition**: `*`, `+`, `?`, `{n}`, `{n,}`, `{n,m}`
 - **Alternation**: `|`
-- **Anchors**: `^` (start), `$` (end), `\b` (word boundary)
+- **Anchors**: `^` or `\A` (start), `$` or `\z` (end), `\b` (word boundary)
 - **Special**: `.` (any character), `()` (grouping)
 
 ### Extended Syntax
-- **Named captures**: `(?name=pattern)` - capture groups with names
+- **Named captures**: `(?name=pattern)` - capture groups with names, which must be an ASCII letter followed by ASCII letters or digits, and unique within the pattern
 - **Non-capturing groups**: `(?:pattern)` - group without capturing
-- **Case-insensitive groups**: `(?i:pattern)` - match case-insensitively
 - **Pattern slots**: `(?$name)` - reference pre-defined patterns
+- **Case-insensitive groups**: `(?i:pattern)` - match ASCII letters in either case
+- **Extended groups**: `(?x:pattern)` - ignore whitespace and `#` comments, outside of character classes. Flags combine, as in `(?ix:...)`.
+- **Comments**: `(?#text)` - ignored
 
 ### Edge Case Handling
 - Empty character classes `[]` and `[^]`
@@ -54,15 +56,8 @@ let match = regex.find("Call 555-1234");
 let regex = compile(raw"(?year=\d{4})-(?month=\d{2})-(?day=\d{2})") orelse panic();
 let match = regex.find("Date: 2024-12-25");
 
-let year = match.groups.get("year") orelse panic();
+let year = match.groups["year"] orelse panic();
 console.log(year.value);  // "2024"
-```
-
-### Case-Insensitive Matching
-
-```temper
-let regex = compile(raw"(?i:hello)") orelse panic();
-// Matches "hello", "HELLO", "Hello", etc.
 ```
 
 ### Pattern Slots
@@ -95,14 +90,18 @@ Parse a pattern with pre-defined pattern slots.
 #### `compileWith(src: String, slots: Mapped<String, RegexNode>): Regex throws Bubble`
 Parse and compile a pattern with pre-defined pattern slots.
 
-### Classes
+#### `parseError(src: String, slots: Mapped<String, RegexNode> = empty): String?`
+Returns why a pattern doesn't parse, such as `at position 2: unexpected ')'; unmatched closing parenthesis`, or null if it parses. The position counts code points.
 
-#### `CaseInsensitive(child: RegexNode)`
-AST node representing a case-insensitive matching group. Created by `(?i:pattern)` syntax.
+#### `format(node: RegexNode): String throws Bubble`
+Writes a node as pattern text that parses back to an equivalent node, such as `^\d+$`. Case-insensitive groups come out expanded, as in `[aA]`.
+
+#### `escape(text: String): String`
+Escapes text so it matches literally when put in a pattern, outside of a `(?x:...)` group.
 
 ## Error Handling
 
-All parsing functions use Temper's `Bubble` error handling. Failed parses bubble up with error information:
+All parsing functions use Temper's `Bubble` error handling. Call `parseError` with the same arguments to get the reason:
 
 ```temper
 let result = parse(raw"[unclosed") orelse do {
@@ -130,8 +129,7 @@ Tests cover:
 ## Known Limitations
 
 - Nested named captures are not currently supported (e.g., `(?outer=(?inner=...))`).
-- Case-insensitive matching compiles but may not affect runtime behavior on all backends.
 
 ## Development
 
-Built with Temper and compiled to multiple target languages. The parser uses recursive descent with error recovery.
+Built with Temper and compiled to multiple target languages. The parser uses recursive descent and stops at the first error.

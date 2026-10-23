@@ -15,21 +15,45 @@ export let parseWith(
   src: String,
   slots: Mapped<String, RegexNode>,
 ): RegexNode throws Bubble {
-  let parser = new Parser(src, slots);
-  let result = parser.readOr();
-  if (!parser.isDone()) {
-    parser.error("unexpected ')'; unmatched closing parenthesis");
-    bubble()
-  }
-  result
+  new Parser(src, slots).readAll()
 }
 
 export let parse(src: String): RegexNode throws Bubble {
-  let parser = new Parser(src);
-  let result = parser.readOr();
-  if (!parser.isDone()) {
-    parser.error("unexpected ')'; unmatched closing parenthesis");
-    bubble()
+  new Parser(src).readAll()
+}
+
+/**
+ * Writes a node as pattern text that parses back to an equivalent node.
+ * Bubbles for node types this library doesn't know or code points that
+ * aren't valid.
+ */
+export let format(node: RegexNode): String throws Bubble {
+  let out = new StringBuilder();
+  formatTo(out, node);
+  out.toString()
+}
+
+/** Escapes text so it matches literally, outside of a (?x:...) group. */
+export let escape(text: String): String {
+  let out = new StringBuilder();
+  for (let c of text) {
+    appendCode(out, c, false) orelse panic();
   }
-  result
+  out.toString()
+}
+
+export let parseError(
+  src: String,
+  slots: Mapped<String, RegexNode> = noSlots,
+): String? {
+  let parser = new Parser(src, slots);
+  let parsed = do {
+    parser.readAll();
+    true
+  } orelse false;
+  if (parsed) {
+    null
+  } else {
+    parser.errorMessage
+  }
 }

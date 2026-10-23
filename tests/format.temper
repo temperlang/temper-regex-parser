@@ -1,0 +1,39 @@
+// Tests for format and escape
+
+let checkFormat(test: Test, pattern: String, expected: String): Void throws Bubble {
+  let text = format(parse(pattern));
+  assert(text == expected);
+  // The formatted text parses back to the same thing.
+  assert(format(parse(text)) == expected);
+}
+
+test("format") { test =>
+  checkFormat(test, "abc", "abc");
+  checkFormat(test, "a.b", "a.b");
+  checkFormat(test, raw"^\d+$", raw"^\d+$");
+  checkFormat(test, raw"\b\w+\b", raw"\b\w+\b");
+  checkFormat(test, raw"\A\s*\z", raw"^\s*$");
+  checkFormat(test, raw"(?year=\d{4})-(?month=\d{2})", raw"(?year=\d{4})-(?month=\d{2})");
+  checkFormat(test, raw"[^a-z\s]", raw"[^a-z\s]");
+  checkFormat(test, "(?:ab)+?", "(?:ab)+?");
+  checkFormat(test, "(?:a|b)c", "(?:a|b)c");
+  checkFormat(test, "a|b|", "a|b|");
+  checkFormat(test, "a{2,}b{3}c{2,4}d?e*", "a{2,}b{3}c{2,4}d?e*");
+  checkFormat(test, raw"\D\S\W", raw"\D\S\W");
+  checkFormat(test, raw"[\W]", raw"\W");
+  checkFormat(test, raw"\.\(\[\{\|", raw"\.\(\[\{\|");
+  checkFormat(test, raw"\t\n\x01", raw"\t\n\u{1}");
+  checkFormat(test, "[a-]", raw"[a\-]");
+  checkFormat(test, "(?i:ab)", "[aA][bB]");
+}
+
+test("format hand-built nodes") {
+  let node = new Sequence(List.of<RegexNode>(Begin, Dot, WordBoundary, End));
+  assert(format(node) == raw"^.\b$");
+  assert(format(new Repeat(new CodeRange(char"a", char"f"), 1, 3)) == "[a-f]{1,3}");
+}
+
+test("escape") {
+  assert(escape("1+1=2? (yes)") == raw"1\+1=2\? \(yes\)");
+  assert(compile(escape("a.b*[c]")).find("xa.b*[c]x").full.value == "a.b*[c]");
+}

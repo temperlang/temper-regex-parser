@@ -1,29 +1,210 @@
 // Char is an alias for Int since characters are represented as Unicode code points
 let Char = Int;
 
+let noSlots: Mapped<String, RegexNode> =
+  // Ideally, this just says `new Map([])`.
+  new Map(List.of<Pair<String, RegexNode>>());
+
+let isAsciiLetter(c: Char): Boolean {
+  (c >= char"a" && c <= char"z") || (c >= char"A" && c <= char"Z")
+}
+
+let isAsciiDigit(c: Char): Boolean {
+  c >= char"0" && c <= char"9"
+}
+
+let isAsciiPunctuation(c: Char): Boolean {
+  (c >= 0x21 && c <= 0x2F)
+    || (c >= 0x3A && c <= 0x40)
+    || (c >= 0x5B && c <= 0x60)
+    || (c >= 0x7B && c <= 0x7E)
+}
+
+// Java only accepts group names like this, so they're the ones every backend
+// accepts.
+let isCaptureName(name: String): Boolean {
+  if (name.isEmpty || !isAsciiLetter(name[String.begin])) {
+    return false;
+  }
+  for (let c of name) {
+    if (!isAsciiLetter(c) && !isAsciiDigit(c)) {
+      return false;
+    }
+  }
+  true
+}
+
+// The special set behind \d, \s, or \w, or their negations \D, \S, or \W.
+let shorthandSet(letter: Char): SpecialSet {
+  when (letter) {
+    char"d", char"D" -> Digit;
+    char"s", char"S" -> Space;
+    else -> Word;
+  }
+}
+
+// The members of \d, \s, or \w. These are ASCII, which is how std/regex
+// defines \w and how the Python and Java backends define all three.
+let shorthandMembers(letter: Char): String {
+  when (letter) {
+    char"d", char"D" -> "0123456789";
+    char"s", char"S" -> "\t\n\u{B}\u{C}\r ";
+    else -> "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ_abcdefghijklmnopqrstuvwxyz";
+  }
+}
+
+let hasCode(text: String, code: Int): Boolean {
+  for (let c of text) {
+    if (c == code) {
+      return true;
+    }
+  }
+  false
+}
+
+// Builds a class like [^\S\n], which no backend can express as one code set.
+// It matches the codes that are in every one of `required` (the members of
+// each \D, \S, or \W in the class) and aren't matched by `items` or
+// `itemMembers` (the members of each \d, \s, or \w in items).
+let negatedClass(items: List<CodePart>, itemMembers: String, required: List<String>): CodeSet {
+  let kept = new StringBuilder();
+  for (let code of required[0]) {
+    var keep = !hasCode(itemMembers, code);
+    for (let members of required) {
+      if (!hasCode(members, code)) {
+        keep = false;
+      }
+    }
+    for (let item of items) {
+      when (item) {
+        is CodePoints -> if (hasCode(item.value, code)) {
+          keep = false;
+        }
+        is CodeRange -> if (item.min <= code && code <= item.max) {
+          keep = false;
+        }
+      }
+    }
+    if (keep) {
+      kept.appendCodePoint(code) orelse panic();
+    }
+  }
+  let codes = kept.toString();
+  if (codes.isEmpty) {
+    new CodeSet(List.of<CodePart>())
+  } else {
+    new CodeSet([new CodePoints(codes)])
+  }
+}
+
+let isPatternSpace(c: Char): Boolean {
+  hasCode(" \t\n\u{B}\u{C}\r", c)
+}
+
+// The other ASCII case of a letter.
+let otherCase(letter: Char): Char {
+  if (letter >= char"a" && letter <= char"z") {
+    letter - char"a" + char"A"
+  } else {
+    letter - char"A" + char"a"
+  }
+}
+
+// Rewrites a node to match ASCII letters in either case, for (?i:...).
+let ignoreCase(node: RegexNode): RegexNode {
+  when (node) {
+    is CodePoints -> ignoreCaseText(node.value);
+    is CodeRange -> new CodeSet(ignoreCaseParts([node]));
+    is CodeSet -> new CodeSet(ignoreCaseParts(node.items), node.negated);
+    is Or -> new Or(node.items.map { (item): RegexNode => ignoreCase(item) });
+    is Sequence -> new Sequence(node.items.map { (item): RegexNode => ignoreCase(item) });
+    is Repeat -> new Repeat(ignoreCase(node.item), node.min, node.max, node.reluctant);
+    is Capture -> new Capture(node.name, ignoreCase(node.item));
+    else -> node;
+  }
+}
+
+// Turns each letter in text into a class of both cases, as in "a1" to [aA]1.
+let ignoreCaseText(text: String): RegexNode {
+  let pieces = new ListBuilder<RegexNode>();
+  let literal = new StringBuilder();
+  for (let c of text) {
+    if (isAsciiLetter(c)) {
+      if (!literal.toString().isEmpty) {
+        pieces.add(new CodePoints(literal.toString()));
+        literal.clear();
+      }
+      let both = new StringBuilder();
+      both.appendCodePoint(c) orelse panic();
+      both.appendCodePoint(otherCase(c)) orelse panic();
+      pieces.add(new CodeSet([new CodePoints(both.toString())]));
+    } else {
+      literal.appendCodePoint(c) orelse panic();
+    }
+  }
+  if (!literal.toString().isEmpty) {
+    pieces.add(new CodePoints(literal.toString()));
+  }
+  when (pieces.length) {
+    0 -> new CodePoints(text);
+    1 -> pieces[0];
+    else -> new Sequence(pieces.toList());
+  }
+}
+
+// Adds the other case of every letter that the class parts cover.
+let ignoreCaseParts(items: List<CodePart>): List<CodePart> {
+  let parts = items.toListBuilder();
+  for (let item of items) {
+    when (item) {
+      is CodePoints -> do {
+        for (let c of item.value) {
+          if (isAsciiLetter(c)) {
+            parts.add(new CodePoints(String.fromCodePoint(otherCase(c)) orelse panic()));
+          }
+        }
+      }
+      is CodeRange -> do {
+        let lowMin = item.min.max(char"a");
+        let lowMax = item.max.min(char"z");
+        if (lowMin <= lowMax) {
+          parts.add(new CodeRange(otherCase(lowMin), otherCase(lowMax)));
+        }
+        let upMin = item.min.max(char"A");
+        let upMax = item.max.min(char"Z");
+        if (upMin <= upMax) {
+          parts.add(new CodeRange(otherCase(upMin), otherCase(upMax)));
+        }
+      }
+    }
+  }
+  parts.toList()
+}
+
 class Parser(
   public chars: String,
-  public slots: Mapped<String, RegexNode> =
-    // Ideally, this just says `new Map([])`.
-    new Map(List.of<Pair<String, RegexNode>>()),
+  public slots: Mapped<String, RegexNode> = noSlots,
 ) {
   public var pos: StringIndex = String.begin;
-  public errors: ListBuilder<String> = new ListBuilder<String>();
+  public var errorMessage: String? = null;
+  private names: MapBuilder<String, Boolean> = new MapBuilder<String, Boolean>();
+  // Inside (?x:...), whitespace and # comments are ignored.
+  private var extended: Boolean = false;
 
-  public error(e: String): Void {
+  // Records the message and bubbles. Where a value is expected, follow it with
+  // bubble() anyway, since the type checker can't tell this never returns.
+  public error(e: String): Void throws Bubble {
     let position = chars.countBetween(String.begin, pos);
-    errors.add("at position ${position.toString()}: ${e}") orelse void;
+    errorMessage = "at position ${position.toString()}: ${e}";
+    bubble()
   }
 
   public isDone(): Boolean {
     chars.end <= pos
   }
 
+  // Only call this when !isDone().
   public peek(): Char {
-    if (isDone()) {
-      error("done");
-      return 0;
-    }
     chars[pos] orelse panic()
   }
 
@@ -38,7 +219,7 @@ class Parser(
   }
 
   public matchChar(s: Char): Boolean {
-    if (peek() == s) {
+    if (!isDone() && peek() == s) {
       advance();
       true
     } else {
@@ -68,6 +249,28 @@ class Parser(
     }
   }
 
+  private readHexDigits(count: Int, escape: String): Int throws Bubble {
+    var codePoint = 0;
+    for (var i = 0; i < count; ++i) {
+      if (isDone()) {
+        error("incomplete ${escape} escape");
+      }
+      let c = read();
+      codePoint = codePoint * 16 + (hexValue(c) orelse do {
+        error("invalid hex digit in ${escape} escape");
+        bubble()
+      });
+    }
+    codePoint
+  }
+
+  private codePointsOf(codePoint: Int): CodePoints throws Bubble {
+    new CodePoints(String.fromCodePoint(codePoint) orelse do {
+      error("invalid code point ${codePoint.toString(16)}");
+      bubble()
+    })
+  }
+
   // Parse a Unicode escape: \uXXXX (4 hex digits) or \u{X...} (1-6 hex digits)
   private finishUnicodeEscape(): RegexNode throws Bubble {
     if (matchChar(char"{")) {
@@ -77,7 +280,6 @@ class Parser(
       while (!matchChar(char"}")) {
         if (isDone() || count >= 6) {
           error("invalid unicode escape");
-          bubble()
         }
         let c = read();
         codePoint = codePoint * 16 + (hexValue(c) orelse do {
@@ -88,48 +290,187 @@ class Parser(
       }
       if (count == 0) {
         error("empty unicode escape");
-        bubble()
       }
-      new CodePoints(String.fromCodePoint(codePoint))
+      codePointsOf(codePoint)
     } else {
       // Fixed form: \uXXXX (exactly 4 hex digits)
-      var codePoint = 0;
-      for (var i = 0; i < 4; ++i) {
-        if (isDone()) {
-          error("incomplete unicode escape");
-          bubble()
+      var codePoint = readHexDigits(4, "unicode");
+      // As in JavaScript, a code point above U+FFFF is written as two escapes,
+      // a high surrogate then a low surrogate.
+      if (codePoint >= 0xD800 && codePoint <= 0xDBFF) {
+        if (!matchChar(char"\\") || !matchChar(char"u")) {
+          error("high surrogate must be followed by a low surrogate");
         }
-        let c = read();
-        codePoint = codePoint * 16 + (hexValue(c) orelse do {
-          error("invalid hex digit in unicode escape");
-          bubble()
-        });
+        let low = readHexDigits(4, "unicode");
+        if (low < 0xDC00 || low > 0xDFFF) {
+          error("high surrogate must be followed by a low surrogate");
+        }
+        codePoint = 0x10000 + (codePoint - 0xD800) * 0x400 + (low - 0xDC00);
       }
-      new CodePoints(String.fromCodePoint(codePoint))
+      codePointsOf(codePoint)
+    }
+  }
+
+  // Consumes text if it comes next.
+  private matchText(text: String): Boolean {
+    var index = pos;
+    for (let c of text) {
+      if (!chars.hasIndex(index) || chars[index] != c) {
+        return false;
+      }
+      index = chars.next(index);
+    }
+    pos = index;
+    true
+  }
+
+  // Skips (?#...) comments, and inside (?x:...) also whitespace and comments
+  // from # to the end of the line.
+  private skipIgnored(): Void throws Bubble {
+    while (!isDone()) {
+      if (extended && isPatternSpace(peek())) {
+        advance();
+      } else if (extended && matchChar(char"#")) {
+        while (!isDone() && !matchChar(char"\n")) {
+          advance();
+        }
+      } else if (matchText("(?#")) {
+        while (!matchChar(char")")) {
+          if (isDone()) {
+            error("missing closing paren in (?#...)");
+          }
+          advance();
+        }
+      } else {
+        break;
+      }
+    }
+  }
+
+  // Whether the text after "(?" is letters and a colon, as in (?i:...).
+  private atFlagGroup(): Boolean {
+    var index = pos;
+    while (chars.hasIndex(index) && isAsciiLetter(chars[index])) {
+      index = chars.next(index);
+    }
+    index != pos && chars.hasIndex(index) && chars[index] == char":"
+  }
+
+  // Parse a flag group: (?i:...) matches ASCII letters in either case, and
+  // (?x:...) ignores whitespace and # comments. Flags can combine, as in (?ix:...).
+  private readFlagGroup(): RegexNode throws Bubble {
+    let outerExtended = extended;
+    var caseless = false;
+    while (!matchChar(char":")) {
+      let flag = read();
+      if (flag == char"i") {
+        caseless = true;
+      } else if (flag == char"x") {
+        extended = true;
+      } else {
+        error("inline flag (?${String.fromCodePoint(flag)}:...) is not supported");
+      }
+    }
+    let regex = readOr();
+    extended = outerExtended;
+    if (!matchChar(char")")) {
+      error("closing paren");
+    }
+    if (caseless) {
+      ignoreCase(regex)
+    } else {
+      regex
+    }
+  }
+
+  // Whether the next two code points are \d, \D, \s, \S, \w, or \W.
+  private atShorthand(): Boolean {
+    if (isDone() || peek() != char"\\") {
+      return false;
+    }
+    let after = chars.next(pos);
+    if (!chars.hasIndex(after)) {
+      return false;
+    }
+    when (chars[after]) {
+      char"d", char"D", char"s", char"S", char"w", char"W" -> true;
+      else -> false;
     }
   }
 
   public charClassBody(): RegexNode throws Bubble {
     let invert = matchChar(char"^");
     let opts = new ListBuilder<CodePart>();
+    // \D, \S, and \W can't go in a CodeSet, so they're kept apart.
+    let negations = new ListBuilder<RegexNode>();
+    // Members of the shorthands, for building a negated class.
+    let optMembers = new StringBuilder();
+    let negatedMembers = new ListBuilder<String>();
     while (!matchChar(char"]")) {
       if (isDone()) {
-        bubble()
+        error("missing closing ']'");
+      }
+      if (atShorthand()) {
+        advance();
+        let letter = read();
+        when (letter) {
+          char"D", char"S", char"W" -> do {
+            negations.add(new CodeSet([shorthandSet(letter)], true));
+            negatedMembers.add(shorthandMembers(letter));
+          }
+          else -> do {
+            opts.add(shorthandSet(letter));
+            optMembers.append(shorthandMembers(letter));
+          }
+        }
+        if (matchChar(char"-")) {
+          if (matchChar(char"]")) {
+            opts.add(new CodePoints("-"));
+            break;
+          }
+          error("invalid range edge");
+        }
+        continue;
       }
       let first = charClassUnit();
       if (matchChar(char"-")) {
         if (matchChar(char"]")) {
           // Exit on square bracket either way. Would need escaped.
+          opts.add(first);
           opts.add(new CodePoints("-"));
           break;
         }
         let second = charClassUnit();
-        opts.add(new CodeRange(extractCode(first), extractCode(second)));
+        let min = extractCode(first);
+        let max = extractCode(second);
+        if (min > max) {
+          error("character class range is out of order");
+        }
+        opts.add(new CodeRange(min, max));
       } else {
         opts.add(first);
       }
     }
-    new CodeSet(opts.toList(), invert)
+    let items = opts.toList();
+    if (negations.isEmpty && !invert && items.length == 1 && !(items[0] is CodeRange)) {
+      // A class of one character or shorthand, like [a] or [\d], is just that.
+      // Ranges stay in a set because the Lua backend can't match a bare one.
+      items[0]
+    } else if (negations.isEmpty) {
+      new CodeSet(items, invert)
+    } else if (!invert) {
+      // [a\D] matches a or a non-digit.
+      if (!items.isEmpty) {
+        negations.add(new CodeSet(items), 0);
+      }
+      if (negations.length == 1) {
+        negations[0]
+      } else {
+        new Or(negations.toList())
+      }
+    } else {
+      negatedClass(items, optMembers.toString(), negatedMembers.toList())
+    }
   }
 
   private charClassUnit(): CodePart throws Bubble {
@@ -138,8 +479,11 @@ class Parser(
       if (matchChar(char"b")) {
         new CodePoints(String.fromCodePoint(8))
       } else {
-        finishEscape() as CodePart orelse do {
-          error("invalid code part");
+        // charClassBody handles shorthands itself, so this only sees one that
+        // ends a range, like [a-\D], or an anchor like \A. Neither is allowed.
+        let escape = finishEscape();
+        escape as CodePart orelse do {
+          error("escape not allowed in a character class");
           bubble()
         }
       }
@@ -157,40 +501,37 @@ class Parser(
 
   // Parse a hex escape: \xNN (exactly 2 hex digits)
   private finishHexEscape(): RegexNode throws Bubble {
-    var codePoint = 0;
-    for (var i = 0; i < 2; ++i) {
-      if (isDone()) {
-        error("incomplete hex escape");
-        bubble()
-      }
-      let c = read();
-      codePoint = codePoint * 16 + (hexValue(c) orelse do {
-        error("invalid hex digit in hex escape");
-        bubble()
-      });
-    }
-    new CodePoints(String.fromCodePoint(codePoint))
+    new CodePoints(String.fromCodePoint(readHexDigits(2, "hex")))
   }
 
   private finishEscape(): RegexNode throws Bubble {
     if (isDone()) {
       error("trailing '\\' at end of pattern");
-      bubble()
     }
     var escapeCode = peek();
     if (matchChar(char"0")) {
       new CodePoints(String.fromCodePoint(0))
     } else if (matchChar(char"a")) {
       new CodePoints(String.fromCodePoint(7))   // bell
+    } else if (matchChar(char"A")) {
+      Begin
     } else if (matchChar(char"b")) {
       WordBoundary
     } else if (matchChar(char"B")) {
       error("\\B (non-word boundary) is not supported");
       bubble()
+    } else if (matchChar(char"c")) {
+      // Control character: \cA (or \ca) is U+0001, through \cZ, U+001A
+      if (isDone() || !isAsciiLetter(peek())) {
+        error("\\c must be followed by a letter");
+      }
+      new CodePoints(String.fromCodePoint(read() % 32))
     } else if (matchChar(char"d")) {
       Digit
     } else if (matchChar(char"D")) {
       new CodeSet([Digit], true)
+    } else if (matchChar(char"e")) {
+      new CodePoints(String.fromCodePoint(0x1B))  // escape
     } else if (matchChar(char"f")) {
       new CodePoints(String.fromCodePoint(12))  // form feed
     } else if (matchChar(char"n")) {
@@ -213,15 +554,10 @@ class Parser(
       new CodeSet([Word], true)
     } else if (matchChar(char"x")) {
       finishHexEscape()
-    } else if (
-      matchChar(char"(") || matchChar(char")")
-      || matchChar(char"[") || matchChar(char"]")
-      || matchChar(char"{") || matchChar(char"}")
-      || matchChar(char".") || matchChar(char "\\") || matchChar(char"-")
-      || matchChar(char"/") || matchChar(char"^") || matchChar(char"$")
-      || matchChar(char"|")
-      || matchRepeat()
-    ) {
+    } else if (matchChar(char"z")) {
+      End
+    } else if (isAsciiPunctuation(escapeCode) || escapeCode == char" ") {
+      advance();
       new CodePoints(String.fromCodePoint(escapeCode))
     } else if (peek() >= char"1" && peek() <= char"9") {
       error("backreferences (\\${String.fromCodePoint(peek())}) are not supported");
@@ -240,10 +576,19 @@ class Parser(
   // -1 means unbounded, -2 means "not a quantifier"
   public var braceMax: Int = 0;
 
+  // Reads the next digit onto the end of count.
+  private appendDigit(count: Int): Int throws Bubble {
+    let digit = read() - char"0";
+    if (count > (0x7FFFFFFF - digit) / 10) {
+      error("repeat count is too large");
+    }
+    count * 10 + digit
+  }
+
   // Try to parse a {n}, {n,}, or {n,m} quantifier.
   // Sets braceMin/braceMax and returns true on success.
   // Returns false and backtracks if not a valid quantifier.
-  private tryParseBraceQuantifier(): Boolean {
+  private tryParseBraceQuantifier(): Boolean throws Bubble {
     let savedPos = pos;
     if (!matchChar(char"{")) {
       return false;
@@ -252,7 +597,7 @@ class Parser(
     var min = 0;
     var minDigits = 0;
     while (!isDone() && peek() >= char"0" && peek() <= char"9") {
-      min = min * 10 + (read() - char"0");
+      min = appendDigit(min);
       minDigits = minDigits + 1;
     }
     if (minDigits == 0) {
@@ -273,7 +618,7 @@ class Parser(
     var max = 0;
     var maxDigits = 0;
     while (!isDone() && peek() >= char"0" && peek() <= char"9") {
-      max = max * 10 + (read() - char"0");
+      max = appendDigit(max);
       maxDigits = maxDigits + 1;
     }
     if (!matchChar(char"}")) {
@@ -291,7 +636,7 @@ class Parser(
   }
 
   public readPostfix(exist: RegexNode): RegexNode throws Bubble {
-    if (matchChar(char"+")) {
+    let repeat = if (matchChar(char"+")) {
       new Repeat(exist, 1, null, matchChar(char"?"))
     } else if (matchChar(char"*")) {
       new Repeat(exist, 0, null, matchChar(char"?"))
@@ -301,7 +646,6 @@ class Parser(
       let nonGreedy = matchChar(char"?");
       if (braceMax != -1 && braceMin > braceMax) {
         error("quantifier {${braceMin.toString()},${braceMax.toString()}} has min greater than max");
-        bubble()
       }
       if (braceMax == -1) {
         new Repeat(exist, braceMin, null, nonGreedy)
@@ -309,7 +653,42 @@ class Parser(
         new Repeat(exist, braceMin, braceMax, nonGreedy)
       }
     } else {
-      exist
+      return exist;
+    };
+    if (matchRepeat() || tryParseBraceQuantifier()) {
+      error("nothing to repeat");
+    }
+    repeat
+  }
+
+  private claimName(name: String): Void throws Bubble {
+    if (!isCaptureName(name)) {
+      error("invalid capture name '${name}'; use an ASCII letter followed by ASCII letters or digits");
+    }
+    if (names.has(name)) {
+      error("duplicate capture name '${name}'");
+    }
+    names[name] = true;
+  }
+
+  // Slots can hold captures too, and every name in the pattern must be unique.
+  private claimNames(node: RegexNode): Void throws Bubble {
+    when (node) {
+      is Capture -> do {
+        claimName(node.name);
+        claimNames(node.item);
+      }
+      is Or -> do {
+        for (let item of node.items) {
+          claimNames(item);
+        }
+      }
+      is Sequence -> do {
+        for (let item of node.items) {
+          claimNames(item);
+        }
+      }
+      is Repeat -> claimNames(node.item);
     }
   }
 
@@ -323,7 +702,6 @@ class Parser(
           let regex = readOr();
           if (!matchChar(char")")) {
             error("closing paren");
-            bubble();
           }
           regex
         } else if (matchChar(char"$")) {
@@ -331,15 +709,16 @@ class Parser(
           while (!matchChar(char")")) {
             if (isDone()) {
               error("missing closing paren in (?$...)");
-              bubble();
             }
             parts.appendCodePoint(read());
           }
           let str = parts.toString();
-          slots[str] orelse do {
+          let slot = slots[str] orelse do {
             error("no such slot: ${str}");
             bubble()
-          }
+          };
+          claimNames(slot);
+          slot
         } else if (matchChar(char"=")) {
           error("positive lookhead is not supported");
           bubble()
@@ -357,21 +736,17 @@ class Parser(
         } else if (matchChar(char"!")) {
           error("negative lookahead is not supported");
           bubble()
+        } else if (atFlagGroup()) {
+          readFlagGroup()
         } else {
           // Detect common unsupported syntax before named capture parsing
           if (!isDone()) {
             let checkPos = pos;
             let fc = read();
             if (!isDone()) {
-              if (peek() == char":") {
-                // (?X:...) — inline flag group
-                error("inline flag group (?${String.fromCodePoint(fc)}:...) is not supported");
-                bubble()
-              }
-              if (fc == char"P" && peek() == char"<") {
-                // (?P<name>...) — Python-style named capture
-                error("Python-style (?P<name>...) is not supported; use (?name=pattern) instead");
-                bubble()
+              if (fc == char"P" && (peek() == char"<" || peek() == char"=" || peek() == char">")) {
+                // (?P<name>...), (?P=name), (?P>name) — Python-style groups
+                error("Python-style (?P...) groups are not supported; use (?name=pattern) instead");
               }
             }
             pos = checkPos;
@@ -379,27 +754,25 @@ class Parser(
           // Named capture: (?name=pattern)
           let str = new StringBuilder();
           while (matchChar(char" ")) {}
-          while (!matchChar(char"=")) {
-            if (isDone()) {
-              error("missing = in (?${str.toString()}=...)");
-              return bubble()
-            }
+          while (!isDone() && peek() != char" " && peek() != char"=") {
             str.appendCodePoint(read());
-            while (matchChar(char" ")) {}
           }
+          while (matchChar(char" ")) {}
+          if (!matchChar(char"=")) {
+            error("missing = in (?${str.toString()}=...)");
+          }
+          let name = str.toString();
+          claimName(name);
           let regex = readOr();
           if (!matchChar(char")")) {
             error("closing paren");
-            bubble();
           }
-          let name = str.toString();
           new Capture(name, regex)
         }
       } else {
         let regex = readOr();
         if (!matchChar(char")")) {
           error("closing paren");
-          bubble();
         }
         regex
       }
@@ -430,9 +803,7 @@ class Parser(
         codeBuffer.clear();
       }
     }
-    // Loop through everything at this level.
-    while (!isDone() && peek() != char"|" && peek() != char")") {
-      let regex = readPostfix(readSingle());
+    let add(regex: RegexNode): Void throws Bubble {
       when (regex) {
         is CodePoints -> codeBuffer.add(regex.value);
         else -> do {
@@ -440,6 +811,23 @@ class Parser(
           seq.add(regex);
         }
       }
+    }
+    // Loop through everything at this level.
+    skipIgnored();
+    while (!isDone() && peek() != char"|" && peek() != char")") {
+      let single = readSingle();
+      skipIgnored();
+      let regex = readPostfix(single);
+      when (regex) {
+        // A group like (?:b.) in a(?:b.)c needs no nesting.
+        is Sequence -> do {
+          for (let item of regex.items) {
+            add(item);
+          }
+        }
+        else -> add(regex);
+      }
+      skipIgnored();
     }
     popCodeBuffer();
     // Finish result.
@@ -454,14 +842,25 @@ class Parser(
     while (!isDone() && peek() != char")") {
       if (ors.length != 0 && !matchChar(char"|")) {
         error("or");
-        bubble();
       }
       let regex = readSeq();
-      ors.add(regex);
+      when (regex) {
+        // A group like (?:a|b) in (?:a|b)|c needs no nesting.
+        is Or -> ors.addAll(regex.items);
+        else -> ors.add(regex);
+      }
     }
     when (ors.length) {
       1 -> ors[0];
       else -> new Or(ors.toList());
     }
+  }
+
+  public readAll(): RegexNode throws Bubble {
+    let result = readOr();
+    if (!isDone()) {
+      error("unexpected ')'; unmatched closing parenthesis");
+    }
+    result
   }
 }

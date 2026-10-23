@@ -30,6 +30,49 @@ test("non-capturing with quantifier") {
   assert(match == "ababab");
 }
 
+test("case-insensitive group") {
+  let regex = compile("(?i:hello)");
+  assert(regex.found("HeLLo"));
+  assert(regex.found("hello"));
+  assert(!regex.found("help"));
+  assert(compile("a(?i:b)c").found("aBc"));
+  assert(!compile("a(?i:b)c").found("ABC"));
+}
+
+test("case-insensitive classes") {
+  assert(compile("(?i:[a-c]+)").find("xABcx").full.value == "ABc");
+  assert(!compile("(?i:[^a])").found("A"));
+  assert(compile("(?i:[^a])").found("b"));
+  assert(compile(raw"(?i:\d[k])").found("5K"));
+}
+
+test("case-insensitive keeps captures") {
+  let found = compile("(?i:x(?word=ab)y)").find("XABY");
+  assert(found.groups["word"].value == "AB");
+}
+
+test("extended group") {
+  let regex = compile("(?x: a b  # letters\n  c+ )");
+  assert(regex.found("abcc"));
+  assert(!regex.found("a b c"));
+  assert(compile(raw"(?x:a\ b)").found("a b"));
+  assert(compile("(?x:[ ]x)").found(" x"));
+  assert(compile("(?x:a)  b").found("a  b"));
+}
+
+test("combined flags") {
+  assert(compile("(?ix: A b )").found("ab"));
+}
+
+test("comments") {
+  assert(compile("a(?#note)b").found("ab"));
+  assert(compile("a(?#note)+").find("aaa").full.value == "aaa");
+}
+
+test("unclosed comment") { test =>
+  assertBubble(test) { compile("a(?#note"); }
+}
+
 test("named capture vs non-capturing") {
   let regex = compile("(?:pre)(?name=\\w+)(?:post)");
   let match = regex.find("preTESTpost");
