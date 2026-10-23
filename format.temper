@@ -24,29 +24,31 @@ let appendCode(out: StringBuilder, code: Int, inClass: Boolean): Void throws Bub
   }
 }
 
-// std/regex doesn't say which special a node is, and Temper can't compare
-// objects for identity, so this tells them apart by what they match. Each
-// check compiles a small regex.
-let specialText(special: Special): String {
+// std/regex doesn't export the classes behind its specials, and Temper can't
+// compare objects for identity, so this tells them apart by what they match,
+// compiling one or two small regexes. Any other special bubbles. std/regex
+// compiles one it doesn't know to nothing, so it matches everywhere.
+let specialText(special: Special): String throws Bubble {
   if (special is SpecialSet) {
-    if (!special.found("5")) {
-      "\\s"
-    } else if (special.found("a")) {
-      "\\w"
-    } else {
-      "\\d"
+    let regex = special.compiled();
+    // Whether it matches "5", "a", and " ".
+    when ("${regex.found("5")} ${regex.found("a")} ${regex.found(" ")}") {
+      "true false false" -> "\\d";
+      "false false true" -> "\\s";
+      "true true false" -> "\\w";
+      else -> bubble();
     }
-  } else if (do { special.find("a").full.value == "a" } orelse false) {
-    "."
   } else {
-    let afterText = new Sequence(List.of<RegexNode>(new CodePoints("a"), special)).found("a");
-    let beforeText = new Sequence(List.of<RegexNode>(special, new CodePoints("a"))).found("a");
-    if (afterText && beforeText) {
-      "\\b"
-    } else if (beforeText) {
-      "^"
-    } else {
-      "$"
+    // With S as the special, whether aS matches "a" and "ab", then whether Sa
+    // matches "a" and "ba".
+    let aS = new Sequence(List.of<RegexNode>(new CodePoints("a"), special)).compiled();
+    let sA = new Sequence(List.of<RegexNode>(special, new CodePoints("a"))).compiled();
+    when ("${aS.found("a")} ${aS.found("ab")} ${sA.found("a")} ${sA.found("ba")}") {
+      "false true false true" -> ".";
+      "false false true false" -> "^";
+      "true false false false" -> "$";
+      "true false true false" -> "\\b";
+      else -> bubble();
     }
   }
 }

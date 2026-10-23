@@ -44,6 +44,16 @@ test("case-insensitive classes") {
   assert(!compile("(?i:[^a])").found("A"));
   assert(compile("(?i:[^a])").found("b"));
   assert(compile(raw"(?i:\d[k])").found("5K"));
+  let wordNotA = compile(raw"(?i:[^\Wa])");
+  assert(!wordNotA.found("a"));
+  assert(!wordNotA.found("A"));
+  assert(wordNotA.found("B"));
+}
+
+test("nested captures") {
+  let found = compile("(?outer=a(?inner=b)c)").find("xabcx");
+  assert(found.groups["outer"].value == "abc");
+  assert(found.groups["inner"].value == "b");
 }
 
 test("case-insensitive keeps captures") {

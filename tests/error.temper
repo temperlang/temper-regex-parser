@@ -119,6 +119,7 @@ test("parse error messages") {
   assert(parseError("a{5,2}") == "at position 6: quantifier {5,2} has min greater than max");
   assert(parseError("(?x=a)(?x=b)") == "at position 10: duplicate capture name 'x'");
   assert(parseError("[a") == "at position 2: missing closing ']'");
+  assert(parseError("[a-") == "at position 3: missing closing ']'");
   assert(parseError("(?$nope)") == "at position 8: no such slot: nope");
 }
 

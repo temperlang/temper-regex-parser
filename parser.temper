@@ -190,6 +190,9 @@ class Parser(
   private names: MapBuilder<String, Boolean> = new MapBuilder<String, Boolean>();
   // Inside (?x:...), whitespace and # comments are ignored.
   private var extended: Boolean = false;
+  // Inside (?i:...), a class like [^\Wa] has to exclude both cases of its
+  // members while it's built, since afterward it's an ordinary positive set.
+  private var caseless: Boolean = false;
 
   // Records the message and bubbles. Where a value is expected, follow it with
   // bubble() anyway, since the type checker can't tell this never returns.
@@ -360,7 +363,7 @@ class Parser(
   // (?x:...) ignores whitespace and # comments. Flags can combine, as in (?ix:...).
   private readFlagGroup(): RegexNode throws Bubble {
     let outerExtended = extended;
-    var caseless = false;
+    let outerCaseless = caseless;
     while (!matchChar(char":")) {
       let flag = read();
       if (flag == char"i") {
@@ -372,11 +375,14 @@ class Parser(
       }
     }
     let regex = readOr();
+    // An enclosing (?i:...) already rewrites this group.
+    let rewrite = caseless && !outerCaseless;
     extended = outerExtended;
+    caseless = outerCaseless;
     if (!matchChar(char")")) {
       error("closing paren");
     }
-    if (caseless) {
+    if (rewrite) {
       ignoreCase(regex)
     } else {
       regex
@@ -440,6 +446,9 @@ class Parser(
           opts.add(new CodePoints("-"));
           break;
         }
+        if (isDone()) {
+          error("missing closing ']'");
+        }
         let second = charClassUnit();
         let min = extractCode(first);
         let max = extractCode(second);
@@ -469,7 +478,8 @@ class Parser(
         new Or(negations.toList())
       }
     } else {
-      negatedClass(items, optMembers.toString(), negatedMembers.toList())
+      let excluded = if (caseless) { ignoreCaseParts(items) } else { items };
+      negatedClass(excluded, optMembers.toString(), negatedMembers.toList())
     }
   }
 
