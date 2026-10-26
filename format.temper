@@ -1,0 +1,159 @@
+// Writes RegexNode trees back out as pattern text in this library's dialect.
+
+let isMeta(c: Char): Boolean {
+  hasCode("\\^$.|?*+()[]{}", c)
+}
+
+// Appends a code point so that it parses back as itself, in a character class
+// or out of one.
+let appendCode(out: StringBuilder, code: Int, inClass: Boolean): Void throws Bubble {
+  when (code) {
+    0x9 -> out.append("\\t");
+    0xA -> out.append("\\n");
+    0xB -> out.append("\\v");
+    0xC -> out.append("\\f");
+    0xD -> out.append("\\r");
+    else -> if (code < 0x20 || code == 0x7F) {
+      out.append("\\u{${code.toString(16)}}");
+    } else {
+      if (isMeta(code) || (inClass && code == char"-")) {
+        out.append("\\");
+      }
+      out.appendCodePoint(code);
+    }
+  }
+}
+
+// std/regex doesn't export the classes behind its specials, and Temper can't
+// compare objects for identity, so this tells them apart by what they match,
+// compiling one or two small regexes. Any other special bubbles. std/regex
+// compiles one it doesn't know to nothing, so it matches everywhere.
+let specialText(special: Special): String throws Bubble {
+  if (special is SpecialSet) {
+    let regex = special.compiled();
+    // Whether it matches "5", "a", and " ".
+    when ("${regex.found("5")} ${regex.found("a")} ${regex.found(" ")}") {
+      "true false false" -> "\\d";
+      "false false true" -> "\\s";
+      "true true false" -> "\\w";
+      else -> bubble();
+    }
+  } else {
+    // With S as the special, whether aS matches "a" and "ab", then whether Sa
+    // matches "a" and "ba".
+    let aS = new Sequence(List.of<RegexNode>(new CodePoints("a"), special)).compiled();
+    let sA = new Sequence(List.of<RegexNode>(special, new CodePoints("a"))).compiled();
+    when ("${aS.found("a")} ${aS.found("ab")} ${sA.found("a")} ${sA.found("ba")}") {
+      "false true false true" -> ".";
+      "false false true false" -> "^";
+      "true false false false" -> "$";
+      "true false true false" -> "\\b";
+      else -> bubble();
+    }
+  }
+}
+
+let formatSet(out: StringBuilder, set: CodeSet): Void throws Bubble {
+  if (set.negated && set.items.length == 1 && set.items[0] is SpecialSet) {
+    // [^\d] is \D.
+    out.append(when (specialText(set.items[0] as SpecialSet)) {
+      "\\d" -> "\\D";
+      "\\s" -> "\\S";
+      else -> "\\W";
+    });
+    return;
+  }
+  out.append(if (set.negated) { "[^" } else { "[" });
+  for (let item of set.items) {
+    when (item) {
+      is CodePoints -> do {
+        for (let c of item.value) {
+          appendCode(out, c, true);
+        }
+      }
+      is CodeRange -> do {
+        appendCode(out, item.min, true);
+        out.append("-");
+        appendCode(out, item.max, true);
+      }
+      is SpecialSet -> out.append(specialText(item));
+      else -> bubble();
+    }
+  }
+  out.append("]");
+}
+
+// Whether a node needs (?:...) around it before a quantifier.
+let needsGroupToRepeat(node: RegexNode): Boolean {
+  when (node) {
+    is CodePoints -> !node.value.hasAtLeast(String.begin, node.value.end, 1)
+      || node.value.hasAtLeast(String.begin, node.value.end, 2);
+    is Sequence, is Or, is Repeat -> true;
+    else -> false;
+  }
+}
+
+let formatGrouped(out: StringBuilder, node: RegexNode, grouped: Boolean): Void throws Bubble {
+  if (grouped) {
+    out.append("(?:");
+    formatTo(out, node);
+    out.append(")");
+  } else {
+    formatTo(out, node);
+  }
+}
+
+let formatTo(out: StringBuilder, node: RegexNode): Void throws Bubble {
+  when (node) {
+    is CodePoints -> do {
+      for (let c of node.value) {
+        appendCode(out, c, false);
+      }
+    }
+    is CodeRange -> do {
+      out.append("[");
+      appendCode(out, node.min, true);
+      out.append("-");
+      appendCode(out, node.max, true);
+      out.append("]");
+    }
+    is CodeSet -> formatSet(out, node);
+    is Or -> do {
+      var separator = "";
+      for (let item of node.items) {
+        out.append(separator);
+        separator = "|";
+        formatTo(out, item);
+      }
+    }
+    is Sequence -> do {
+      for (let item of node.items) {
+        formatGrouped(out, item, item is Or);
+      }
+    }
+    is Repeat -> do {
+      formatGrouped(out, node.item, needsGroupToRepeat(node.item));
+      let min = node.min;
+      let max = node.max;
+      if (max == null) {
+        out.append(if (min == 0) { "*" } else if (min == 1) { "+" } else { "{${min},}" });
+      } else if (min == 0 && max == 1) {
+        out.append("?");
+      } else if (min == max) {
+        out.append("{${min}}");
+      } else {
+        out.append("{${min},${max}}");
+      }
+      if (node.reluctant) {
+        out.append("?");
+      }
+    }
+    is Capture -> do {
+      out.append("(?${node.name}=");
+      formatTo(out, node.item);
+      out.append(")");
+    }
+    is Special -> out.append(specialText(node));
+    else -> bubble();
+  }
+}

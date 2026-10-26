@@ -58,6 +58,38 @@ test("inverted with range") {
   assert(letters == "abc");
 }
 
+test("trailing dash keeps preceding member") {
+  let regex = compile("[a-]");
+  assert(regex.found("a"));
+  assert(regex.found("-"));
+}
+
+test("negated shorthand inside class") {
+  let nonDigit = compile(raw"[\D]");
+  assert(nonDigit.found("a"));
+  assert(!nonDigit.found("5"));
+
+  let mixed = compile(raw"[a\W]+");
+  assert(mixed.find("bba!?a").full.value == "a!?a");
+
+  let spaceNotNewline = compile(raw"[^\S\n]+");
+  assert(spaceNotNewline.find("a \t\nb").full.value == " \t");
+  assert(!spaceNotNewline.found("\n"));
+  assert(!spaceNotNewline.found("a"));
+
+  let digitNotZero = compile(raw"[^\D0]");
+  assert(digitNotZero.found("5"));
+  assert(!digitNotZero.found("0"));
+  assert(!digitNotZero.found("a"));
+
+  assert(!compile(raw"[^\D\S]").found("1 a"));
+}
+
+test("negated shorthand cannot be a range edge") { test =>
+  assertBubble(test) { compile(raw"[\D-z]"); }
+  assertBubble(test) { compile(raw"[a-\W]"); }
+}
+
 test("combined character classes") {
   let regex = compile("[a-z\\d]+");
   assert(regex.found("abc123"));

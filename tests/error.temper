@@ -46,7 +46,6 @@ test("unicode property escapes not supported") { test =>
 }
 
 test("inline flag groups not supported") { test =>
-  assertBubble(test) { compile("(?i:hello)"); }
   assertBubble(test) { compile("(?m:test)"); }
   assertBubble(test) { compile("(?s:.)"); }
 }
@@ -62,6 +61,66 @@ test("standard named capture syntax not supported") { test =>
 test("quantifier min greater than max") { test =>
   assertBubble(test) { compile("a{5,2}"); }
   assertBubble(test) { compile("a{10,0}"); }
+}
+
+test("stacked quantifiers") { test =>
+  assertBubble(test) { compile("a{2}{3}"); }
+  assertBubble(test) { compile("a*{2}"); }
+  assertBubble(test) { compile("a+??"); }
+}
+
+test("python group syntax not supported") { test =>
+  assertBubble(test) { compile("(?P=x)"); }
+  assertBubble(test) { compile("(?P>x)"); }
+}
+
+test("reversed class range") { test =>
+  assertBubble(test) { compile("[z-a]"); }
+}
+
+test("quantifier overflow") { test =>
+  assertBubble(test) { compile("a{3000000000}"); }
+  assertBubble(test) { compile("a{1,99999999999}"); }
+}
+
+test("duplicate capture names") { test =>
+  assertBubble(test) { compile("(?a=x)(?a=y)"); }
+  assertBubble(test) { compile("(?a=x)|(?a=y)"); }
+  assertBubble(test) {
+    compileWith("(?$p)(?$p)", new Map([new Pair("p", parse("(?a=x)"))]));
+  }
+}
+
+test("invalid capture names") { test =>
+  assertBubble(test) { compile("(?a-b=x)"); }
+  assertBubble(test) { compile("(?a_b=x)"); }
+  assertBubble(test) { compile("(?1a=x)"); }
+  assertBubble(test) { compile("(?my name=x)"); }
+  assertBubble(test) { compile("(? =x)"); }
+  assertBubble(test) {
+    compileWith("(?$p)", new Map([new Pair<String, RegexNode>("p", new Capture("a b", parse("x")))]));
+  }
+}
+
+test("spaces around capture name") {
+  assert(compile("(? year =\\d+)").find("in 2024").groups["year"].value == "2024");
+}
+
+test("invalid code points in escapes") { test =>
+  assertBubble(test) { compile(raw"\u{110000}"); }
+  assertBubble(test) { compile("\\u${"D800"}"); }
+  assertBubble(test) { compile("\\u${"DC00"}"); }
+  assertBubble(test) { compile("\\u${"D83D"}x"); }
+}
+
+test("parse error messages") {
+  assert(parseError("abc") == null);
+  assert(parseError("ab)") == "at position 2: unexpected ')'; unmatched closing parenthesis");
+  assert(parseError("a{5,2}") == "at position 6: quantifier {5,2} has min greater than max");
+  assert(parseError("(?x=a)(?x=b)") == "at position 10: duplicate capture name 'x'");
+  assert(parseError("[a") == "at position 2: missing closing ']'");
+  assert(parseError("[a-") == "at position 3: missing closing ']'");
+  assert(parseError("(?$nope)") == "at position 8: no such slot: nope");
 }
 
 test("brace quantifiers work") {
