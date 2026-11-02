@@ -121,6 +121,7 @@ test("parse error messages") {
   assert(parseError("[a") == "at position 2: missing closing ']'");
   assert(parseError("[a-") == "at position 3: missing closing ']'");
   assert(parseError("(?$nope)") == "at position 8: no such slot: nope");
+  assert(parseError("(?/g)a") == "at position 3: flags after a regex literal are not supported; use a group like (?i:...)");
 }
 
 test("brace quantifiers work") {

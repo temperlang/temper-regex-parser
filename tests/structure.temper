@@ -21,6 +21,17 @@ test("structure") {
   assert((seq.items[2] as CodePoints).value == "efg");
 }
 
+test("empty groups") {
+  // These match the empty string, so they're an empty sequence, not an Or with
+  // no alternatives, which a surrounding Or would lose.
+  assert((parse("") as Sequence).items.isEmpty);
+  assert((parse("(?:)") as Sequence).items.isEmpty);
+  assert((parse("(?g=)") as Capture).item is Sequence);
+  assert((parse("a|(?:)") as Or).items.length == 2);
+  assert(compile("a|(?:)").found("b"));
+  assert((parse("a(?:)b") as CodePoints).value == "ab");
+}
+
 test("flattening") {
   // One-member classes are their member, and merge with the text around them.
   assert((parse("a[b]c") as CodePoints).value == "abc");

@@ -729,6 +729,10 @@ class Parser(
           };
           claimNames(slot);
           slot
+        } else if (matchChar(char"/")) {
+          // The Temper compiler passes /a/g to this parser as (?/g)a.
+          error("flags after a regex literal are not supported; use a group like (?i:...)");
+          bubble()
         } else if (matchChar(char"=")) {
           error("positive lookhead is not supported");
           bubble()
@@ -861,6 +865,9 @@ class Parser(
       }
     }
     when (ors.length) {
+      // An empty pattern or group. This has to stay a real alternative, which
+      // an Or with no items wouldn't be in a surrounding Or.
+      0 -> new Sequence(List.of<RegexNode>());
       1 -> ors[0];
       else -> new Or(ors.toList());
     }
